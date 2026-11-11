@@ -63,9 +63,9 @@ def app_files(out, version, fw_name):
     for f in ICONS:
         shutil.copy(HERE / f, app / f)
     manifest = {
-        "name": "SLOOP", "short_name": "SLOOP", "id": "editor/", "start_url": "editor/", "scope": "./",
-        "display": "standalone", "background_color": "#000000", "theme_color": "#000000",
-        "description": "SLOOP for the M-VAVE FM-1: the editor and the installer, also without internet",
+        "name": "gubhu", "short_name": "gubhu", "id": "editor/", "start_url": "editor/", "scope": "./",
+        "display": "standalone", "background_color": "#0B0316", "theme_color": "#0B0316",
+        "description": "gubhu for the M-VAVE FM-1: the editor and the installer, also without internet",
         "icons": [{"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
                   {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
                   {"src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}],
@@ -122,8 +122,20 @@ def main(pkg, version, out):
         if html.count(mark) != 1:
             raise SystemExit(f"index_pkg.html must contain {mark} once; update make_site.py")
     html = html.replace("/*LIB*/", lib).replace("/*META*/", meta)
-    logo = HERE.parent / "assets" / "logo" / "sloop-logo.svg"     # the SLOOP logo, inline
-    html = html.replace("<!--LOGO-->", logo.read_text(encoding="utf-8") if logo.exists() else "<b>SLOOP</b>")
+    # The design tokens, straight from web/tokens.css (DESIGN.md -> tools/gen_tokens.py): one page, no
+    # stylesheet to fetch, and the installer keeps working from the disk.
+    tokens = (HERE / "tokens.css").read_text(encoding="utf-8")
+    if html.count("/*TOKENS*/") != 1:
+        raise SystemExit("index_pkg.html must contain /*TOKENS*/ once; update make_site.py")
+    html = html.replace("/*TOKENS*/", tokens)
+    # The approved artwork, inlined: a raster master, not lettering re-set in a font.
+    logo = HERE.parent / "assets" / "branding" / "logo-web.png"
+    if logo.exists():
+        blob = base64.b64encode(logo.read_bytes()).decode()
+        mark = f'<img src="data:image/png;base64,{blob}" alt="gubhu" width="480" height="320">'
+    else:
+        mark = "<b>gubhu</b>"
+    html = html.replace("<!--LOGO-->", mark)
     inst, ed, fw = out / "webapp" / "installer", out / "webapp" / "editor", out / "firmware"
     for d in (inst, ed, fw):
         d.mkdir(parents=True, exist_ok=True)
@@ -161,9 +173,12 @@ def main(pkg, version, out):
         (ed / dsp.name).unlink()  # never serve an old audio build as the current one
     app_files(out, version, name)
     (out / "index.html").write_text(
-        '<!doctype html><meta charset="utf-8"><title>SLOOP</title>'
+        '<!doctype html><meta charset="utf-8"><title>gubhu</title>'
+        '<meta name="theme-color" content="#0B0316">'
+        '<style>body{margin:0;min-height:100vh;background:#0B0316;color:#F8EFE3;'
+        'font:16px/1.5 ui-sans-serif,system-ui,sans-serif;display:grid;place-items:center}</style>'
         '<meta http-equiv="refresh" content="0; url=webapp/installer/">'
-        '<a href="webapp/installer/">SLOOP installer</a>\n', encoding="utf-8")
+        '<a href="webapp/installer/" style="color:inherit">gubhu installer</a>\n', encoding="utf-8")
     print(f"site: {out}: webapp/installer ({len(html)} B), webapp/editor, firmware/{name} ({len(raw)} B, {product})")
 
 

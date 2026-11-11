@@ -8,6 +8,7 @@ A fork of <a href="https://github.com/isod89/sloop-fm1">SLOOP</a>, free and open
 <a href="SLOOP.md">Manual</a> ·
 <a href="GUIDE.md">Guide</a> ·
 <a href="BUILDING.md">Building</a> ·
+<a href="DESIGN.md">Design system</a> ·
 <a href="../../issues">Issues</a>
 </p>
 

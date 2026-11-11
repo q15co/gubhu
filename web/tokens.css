@@ -1,0 +1,188 @@
+/* Generated from DESIGN.md by tools/gen_tokens.py. Do not edit: edit DESIGN.md. */
+
+:root {
+  --color-primary: #6A00FF;
+  --color-secondary: #D71B8A;
+  --color-tertiary: #FF9A00;
+  --color-neutral: #F8EFE3;
+  --color-ink: #0B0316;
+  --color-surface: #150B22;
+  --color-surface-raised: #24132F;
+  --color-surface-hover: #321844;
+  --color-border: #52365F;
+  --color-on-surface: #F8EFE3;
+  --color-muted: #C7B5CE;
+  --color-on-primary: #FFFFFF;
+  --color-on-secondary: #FFFFFF;
+  --color-on-tertiary: #0B0316;
+  --color-fuchsia: #D71B8A;
+  --color-sunset: #FF544E;
+  --color-amber: #FF9A00;
+  --color-maize: #FFD234;
+  --color-turquoise: #25C5C4;
+  --color-success: #50D3A5;
+  --color-warning: #FFD234;
+  --color-error: #FF6969;
+  --color-focus: #FFD234;
+  --color-light-surface: #F8EFE3;
+  --color-light-on-surface: #0B0316;
+  --color-light-muted: #54445D;
+  --type-display-family: "Exo 2", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --type-display-size: 48px;
+  --type-display-weight: 800;
+  --type-display-leading: 1.05;
+  --type-display-tracking: -0.025em;
+  --type-headline-lg-family: "Exo 2", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --type-headline-lg-size: 32px;
+  --type-headline-lg-weight: 700;
+  --type-headline-lg-leading: 1.15;
+  --type-headline-md-family: "Exo 2", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --type-headline-md-size: 24px;
+  --type-headline-md-weight: 700;
+  --type-headline-md-leading: 1.2;
+  --type-body-md-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --type-body-md-size: 16px;
+  --type-body-md-weight: 400;
+  --type-body-md-leading: 1.5;
+  --type-body-sm-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --type-body-sm-size: 14px;
+  --type-body-sm-weight: 400;
+  --type-body-sm-leading: 1.45;
+  --type-label-md-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --type-label-md-size: 13px;
+  --type-label-md-weight: 600;
+  --type-label-md-leading: 1.3;
+  --type-telemetry-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --type-telemetry-size: 14px;
+  --type-telemetry-weight: 500;
+  --type-telemetry-leading: 1.3;
+  --type-hardware-label-family: "Exo 2", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --type-hardware-label-size: 12px;
+  --type-hardware-label-weight: 700;
+  --type-hardware-label-leading: 1.2;
+  --type-hardware-label-tracking: 0.08em;
+  --rounded-none: 0px;
+  --rounded-xs: 4px;
+  --rounded-sm: 8px;
+  --rounded-md: 12px;
+  --rounded-lg: 20px;
+  --rounded-xl: 28px;
+  --rounded-full: 999px;
+  --space-none: 0px;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-xxl: 48px;
+}
+
+.t-display {
+  font-family: var(--type-display-family);
+  font-size: var(--type-display-size);
+  font-weight: var(--type-display-weight);
+  line-height: var(--type-display-leading);
+  letter-spacing: var(--type-display-tracking);
+}
+
+.t-headline-lg {
+  font-family: var(--type-headline-lg-family);
+  font-size: var(--type-headline-lg-size);
+  font-weight: var(--type-headline-lg-weight);
+  line-height: var(--type-headline-lg-leading);
+}
+
+.t-headline-md {
+  font-family: var(--type-headline-md-family);
+  font-size: var(--type-headline-md-size);
+  font-weight: var(--type-headline-md-weight);
+  line-height: var(--type-headline-md-leading);
+}
+
+.t-body-md {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  font-weight: var(--type-body-md-weight);
+  line-height: var(--type-body-md-leading);
+}
+
+.t-body-sm {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  font-weight: var(--type-body-sm-weight);
+  line-height: var(--type-body-sm-leading);
+}
+
+.t-label-md {
+  font-family: var(--type-label-md-family);
+  font-size: var(--type-label-md-size);
+  font-weight: var(--type-label-md-weight);
+  line-height: var(--type-label-md-leading);
+}
+
+.t-telemetry {
+  font-family: var(--type-telemetry-family);
+  font-size: var(--type-telemetry-size);
+  font-weight: var(--type-telemetry-weight);
+  line-height: var(--type-telemetry-leading);
+}
+
+.t-hardware-label {
+  font-family: var(--type-hardware-label-family);
+  font-size: var(--type-hardware-label-size);
+  font-weight: var(--type-hardware-label-weight);
+  line-height: var(--type-hardware-label-leading);
+  letter-spacing: var(--type-hardware-label-tracking);
+}
+
+.g-app-shell {
+  background-color: #0B0316;
+  color: #F8EFE3;
+}
+
+.g-panel {
+  background-color: #150B22;
+  color: #F8EFE3;
+  border-color: #52365F;
+  border-radius: 20px;
+}
+
+.g-button-primary {
+  background-color: #6A00FF;
+  color: #FFFFFF;
+  border-radius: 12px;
+}
+
+.g-button-secondary {
+  background-color: #24132F;
+  color: #F8EFE3;
+  border-radius: 12px;
+}
+
+.g-button-warm {
+  background-color: #FFD234;
+  color: #0B0316;
+  border-radius: 12px;
+}
+
+.g-active-step {
+  background-color: #FFD234;
+  color: #0B0316;
+  border-radius: 4px;
+}
+
+.g-inactive-step {
+  background-color: #24132F;
+  color: #F8EFE3;
+  border-radius: 4px;
+}
+
+.g-status-error {
+  background-color: #FF6969;
+  color: #0B0316;
+}
+
+.g-light-panel {
+  background-color: #F8EFE3;
+  color: #0B0316;
+}

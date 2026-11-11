@@ -138,3 +138,19 @@ cd /tmp/felucca-site && python3 -m http.server 8000
 
 Installing firmware is at your own risk. If an install fails and the FM-1 no longer
 starts, recovery needs [FM-1-transporter](https://github.com/kurogedelic/FM-1-transporter).
+
+## Design tokens
+
+[DESIGN.md](DESIGN.md) carries the design system in YAML frontmatter: colours, type scale, radii,
+spacing and the component pairings. The CSS the web pages use is generated from it, so a token changes
+in one place and cannot drift:
+
+```
+python3 tools/gen_tokens.py           # rewrite web/tokens.css
+python3 tools/gen_tokens.py --check   # every text/background pairing against WCAG 2.2 AA
+python3 tools/gen_tokens.py --verify  # fail if web/tokens.css is stale
+```
+
+`web/make_site.py` inlines the token file into the installer page, which keeps the built site at one
+request per page. The editor's screen is deliberately not restyled: it mirrors the FM-1's own display,
+and the design system governs the chrome around that simulation rather than the pixels inside it.
