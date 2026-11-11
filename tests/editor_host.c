@@ -10,6 +10,7 @@
 #define FELUCCA_ARRANGER 1
 #define FELUCCA_FLASH 1
 #define FELUCCA_OTA 1
+#include "../firmware/hal/fm1_flash_id.h"   /* FL_JEDEC_OK: persist_boot checks the part */
 /* the flash: a RAM image, read where it is (the XIP window) */
 static uint8_t nor[0x100000] __attribute__((aligned(4096)));
 #define SMP_USER_XIP(k) ((const uint8_t *)nor + SMP_USER_OFF((uint32_t)(k)))
