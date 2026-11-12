@@ -30,3 +30,5 @@ firmware/src/ui_input.c:zerodivcond
 firmware/src/upreset.c:uninitvar
 firmware/src/usb.c:arrayIndexOutOfBoundsCond
 firmware/src/usb.c:constStatement
+tests/hold_rec_test.c:arrayIndexOutOfBoundsCond       # SC[(st - 2) / 2] under `st >= 2 && st < 8`: 0..2; the index cppcheck shows is unsigned-wrap arithmetic
+tests/hostsim.c:invalidPrintfArgType_uint             # NVOICE is an int macro printed with %u: the same value, no range
