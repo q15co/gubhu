@@ -12,6 +12,10 @@
 #define NTRK 4                   /* + the drum track */
 #define TRK_DRUM 3
 enum { V_POLY, V_MONO, V_LEGATO, V_UNISON };   /* P_VOICE */
+/* P_CHORD's values (seq.c CHORD_DEG has their scale degrees): a project stores the number, so they are
+ * appended only, never inserted or reordered */
+enum { CHORD_OFF, CHORD_TRIAD, CHORD_7TH, CHORD_9TH, CHORD_SUS4, CHORD_POWER,
+       CHORD_11TH, CHORD_SUS2, CHORD_ADD9, CHORD_N };
 #define NSTEP 64
 #define HALF_FRAMES 256          /* I2S half buffer: 5.8 ms at 44.1 kHz */
 #ifndef FELUCCA_SLICE

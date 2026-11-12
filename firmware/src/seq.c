@@ -251,19 +251,23 @@ static uint32_t kb_map(const track_t *t, uint32_t k)
 
 /* chord mode (P_CHORD): the chord of the scale built on note n (in the scale; CHR: minor), into c[];
  * the notes it holds (<= 4, the most a step keeps) */
-static const int8_t CHORD_DEG[6][4] = {
+static const int8_t CHORD_DEG[CHORD_N][4] = {
     {0, -1, -1, -1},                     /* OFF */
     {0, 2, 4, -1},                       /* TRIAD: 1 3 5 */
     {0, 2, 4, 6},                        /* 7TH: 1 3 5 7 */
     {0, 2, 6, 8},                        /* 9TH: 1 3 7 9 (the lo-fi / R&B voicing) */
     {0, 3, 4, -1},                       /* SUS4: 1 4 5 */
     {0, -1, -1, -1},                     /* POWER: 1 5 8 (semitones, below) */
+    {2, 6, 8, 10},                       /* 11TH: 3 7 9 11, rootless (on Dorian b3 b7 9 11: the pads' voicing,
+                                          * the root belongs to the log drum) */
+    {0, 1, 4, -1},                       /* SUS2: 1 2 5 */
+    {0, 2, 4, 8},                        /* ADD9: 1 3 5 9 */
 };
 static uint32_t chord_notes(const track_t *t, uint32_t n, uint8_t *c)
 {
-    uint32_t type = (uint32_t)clamp(t->p[P_CHORD], 0, 5), mask = t->p[P_SCALE] ? scale_mask(t) : SCALE_MASK[2];
+    uint32_t type = (uint32_t)clamp(t->p[P_CHORD], 0, CHORD_N - 1), mask = t->p[P_SCALE] ? scale_mask(t) : SCALE_MASK[2];
     uint32_t k = 0, j;
-    if (type == 5u) {
+    if (type == CHORD_POWER) {
         static const uint8_t PW[3] = {0, 7, 12};
         for (j = 0; j < 3u; j++)
             if (n + PW[j] < 128u)
@@ -322,8 +326,8 @@ static void sort_notes(uint8_t *c, uint32_t n)
 /* the chord of white key n with the modifiers held, voiced (VLEAD); its notes (<= 4) into c[] */
 static uint32_t chord_play_notes(track_t *t, uint32_t n, uint32_t mods, uint8_t *c)
 {
-    uint32_t k = chord_notes(t, n, c), j, type = (uint32_t)clamp(t->p[P_CHORD], 0, 5), part = trk_index(t);
-    if (type != 5u && k >= 2u && mods) {                /* (POWER: the inversion only) */
+    uint32_t k = chord_notes(t, n, c), j, type = (uint32_t)clamp(t->p[P_CHORD], 0, CHORD_N - 1), part = trk_index(t);
+    if (type != CHORD_POWER && k >= 2u && mods) {       /* (POWER: the inversion only) */
         uint32_t third = scale_up(t, n, 2u);
         for (j = 0; j < k; j++) {
             if (c[j] == third && (mods & CM_SUS4))
