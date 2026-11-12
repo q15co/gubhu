@@ -944,7 +944,7 @@ UI_SMALL static void layer_screen_draw(void)
             tl[i].fg = pc == root ? C_BLACK : in ? C_WHITE : TE_G2;
         }
         lab[0] = "chord", lab[1] = "scale", lab[2] = "keys", lab[3] = "transp";
-        te_lower(v[0], N_CHORD[clamp(t->p[P_CHORD], 0, 5)], 8);
+        te_lower(v[0], N_CHORD[clamp(t->p[P_CHORD], 0, CHORD_N - 1)], 8);
         te_lower(v[1], N_SCALE[clamp(trk[0].p[P_SCALE], 0, NSCALES - 1)], 8);
         te_lower(v[2], N_QUANT[clamp(t->p[P_QUANT], 0, 2)], 8);
         fmt_int(v[3], t->p[P_TRANS]);

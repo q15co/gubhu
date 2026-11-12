@@ -2,6 +2,7 @@
 /* Exercise the real keyboard, recording, arp and MIDI-out paths on the host.
  * Build with the same generated headers and flags as hostsim.c. */
 #include <assert.h>
+#include <string.h>
 #define main hostsim_main
 #include "hostsim.c"
 #undef main
@@ -389,10 +390,50 @@ static void mute_mode_test(void)
     puts("edit mute mode: kept when EDIT is let go ok");
 }
 
+/* 2.8 (#3): the chord vocabulary. On Dorian the 9TH row already vamps i9 to IV9 (no code change); 11TH,
+ * SUS2 and ADD9 are the three rows this adds, and they must land on the intended notes on Dorian and on
+ * natural minor. */
+static void chord_vocabulary_test(void)
+{
+    track_t *t = &trk[0];
+    static const struct { uint8_t scale, type, n, k, notes[4]; } WANT[] = {
+        {3, CHORD_9TH, 60, 4, {60, 63, 70, 74}},       /* Dorian i9: C Eb Bb D */
+        {3, CHORD_9TH, 65, 4, {65, 69, 75, 79}},       /* Dorian IV9: F A Eb G */
+        {3, CHORD_11TH, 60, 4, {63, 70, 74, 77}},      /* rootless Cm11: Eb Bb D F */
+        {3, CHORD_11TH, 65, 4, {69, 75, 79, 82}},      /* rootless F11: A Eb G Bb */
+        {3, CHORD_SUS2, 60, 3, {60, 62, 67}},          /* C D G */
+        {3, CHORD_ADD9, 60, 4, {60, 63, 67, 74}},      /* C Eb G D */
+        {2, CHORD_11TH, 60, 4, {63, 70, 74, 77}},      /* natural minor: the same rootless shell */
+        {2, CHORD_SUS2, 60, 3, {60, 62, 67}},
+        {2, CHORD_ADD9, 60, 4, {60, 63, 67, 74}},
+    };
+    uint8_t c[8];
+    uint32_t i, j, k;
+    t->p[P_ROOT] = 0;
+    for (j = 0; j < sizeof WANT / sizeof WANT[0]; j++) {
+        t->p[P_SCALE] = (int16_t)WANT[j].scale;
+        t->p[P_CHORD] = (int16_t)WANT[j].type;
+        k = chord_notes(t, WANT[j].n, c);
+        assert(k == WANT[j].k);
+        for (i = 0; i < k; i++)
+            assert(c[i] == WANT[j].notes[i]);
+    }
+    /* a project stores the number: the rows are appended, and the range still fits the byte */
+    assert(CHORD_11TH == 6 && CHORD_SUS2 == 7 && CHORD_ADD9 == 8 && CHORD_N == 9);
+    assert(TP[P_CHORD].max == CHORD_N - 1);
+    assert(!strcmp(TP[P_CHORD].names[CHORD_11TH], "11TH"));
+    assert(!strcmp(TP[P_CHORD].names[CHORD_SUS2], "SUS2"));
+    assert(!strcmp(TP[P_CHORD].names[CHORD_ADD9], "ADD9"));
+    t->p[P_CHORD] = 0;
+    t->p[P_SCALE] = 0;
+    puts("chord vocabulary: 9TH vamps i9 to IV9 on Dorian; 11TH rootless, SUS2 and ADD9 ok");
+}
+
 int main(void)
 {
     host_tracks_init();
     mapping_test();
+    chord_vocabulary_test();
     key_events_test();
     arp_modes_test();
     arp_swing_test();
