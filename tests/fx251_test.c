@@ -621,8 +621,9 @@ static void t_glide(void)
     double rt, r[64];
     uint32_t b, i;
     /* the gain a block applies, against the same render without the change (fork_dry: the state copied) */
-#define GAIN_OF(blk) ({ double xy_ = 0, xx_ = 0; for (i = (blk) * CTL; i < ((blk) + 1u) * CTL; i++) \
-                        xy_ += (double)out_l[i] * dry[i], xx_ += (double)dry[i] * dry[i]; xx_ > 0 ? xy_ / xx_ : 1.0; })
+#define GAIN_OF(blk) ({ double xy_ = 0, xx_ = 0; for (i = (blk) * CTL; i < ((blk) + 1u) * CTL; i++) { \
+                        xy_ += (double)out_l[i] * dry[i]; xx_ += (double)dry[i] * dry[i]; } \
+                        xx_ > 0 ? xy_ / xx_ : 1.0; })
     setup();
     trk[0].p[P_LEVEL] = 100;
     trk_note_on(&trk[0], 45, 100);

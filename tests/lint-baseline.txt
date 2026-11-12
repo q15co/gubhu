@@ -1,0 +1,34 @@
+# The findings cppcheck (warning, portability) reports in the parent tree today, triaged and kept for
+# later: one file:id per line, no line numbers, so an edit above them does not move them.
+#
+# tests/lint.sh fails on anything that is not listed here. Delete a line when the finding is fixed; add
+# one only with its reason, in the commit that adds it. Nothing here is a claim that the code is right:
+# the first group is the reason the finding is not a defect, the second group is still open work.
+
+# the host build's artefacts (a 64-bit host against the target's 32-bit semantics, and the target's own
+# preprocessor; neither exists in the firmware build the device runs):
+firmware/src/dsp.c:preprocessorErrorDirective         # #error on CTL, the target's arithmetic, not the host's
+firmware/src/fm6_core.c:preprocessorErrorDirective    # #error on the operator width, likewise
+firmware/src/main.c:comparePointers                   # the flash window is an address range, by design
+firmware/src/eng_trio.c:shiftNegativeLHS              # wrapping shifts are the DSP's arithmetic
+firmware/src/phys_dsp.c:shiftNegativeLHS              # wrapping shifts are the DSP's arithmetic
+firmware/src/phys_symp.c:shiftTooManyBitsSigned       # wrapping shifts are the DSP's arithmetic
+firmware/src/ui_vis.c:shiftNegativeLHS                # wrapping shifts are the DSP's arithmetic
+firmware/src/dsp.c:shiftTooManyBitsSigned             # wrapping shifts are the DSP's arithmetic
+firmware/src/drums.c:nullPointer                      # ml/mr and mono are never live at once (drums_render / _mono)
+firmware/src/punch.c:constStatement                   # the fx arguments are read, not assigned; the idiom is the parent's
+
+# not triaged yet: real candidates, left visible rather than papered over
+firmware/src/drums.c:arrayIndexOutOfBoundsCond
+firmware/src/eng_sample.c:arrayIndexOutOfBoundsCond
+firmware/src/libc.c:negativeIndex
+firmware/src/ota.c:arrayIndexOutOfBoundsCond
+firmware/src/params.c:arrayIndexOutOfBoundsCond
+firmware/src/seq.c:zerodiv
+firmware/src/ui_input.c:constStatement
+firmware/src/ui_input.c:zerodivcond
+firmware/src/upreset.c:uninitvar
+firmware/src/usb.c:arrayIndexOutOfBoundsCond
+firmware/src/usb.c:constStatement
+tests/hold_rec_test.c:arrayIndexOutOfBoundsCond       # SC[(st - 2) / 2] under `st >= 2 && st < 8`: 0..2; the index cppcheck shows is unsigned-wrap arithmetic
+tests/hostsim.c:invalidPrintfArgType_uint             # NVOICE is an int macro printed with %u: the same value, no range
