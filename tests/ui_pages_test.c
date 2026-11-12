@@ -876,7 +876,7 @@ int main(int argc, char **argv)
                   "theme (2.7.2): the SONG screen's sections in the theme's track colours");
             go_home();
             {   /* a light theme (the editor's Light <-> dark on GREEN: the five the other way, white, a black accent):
-                 * the same pages, to look at (build/host/*-light.ppm) */
+                 * the same pages, to look at (build/host/NAME-light.ppm) */
                 theme_t l = th, keep = th;
                 for (k = 0; k < 5; k++)
                     l.c[k] = PALETTES[0].c[4 - k];
@@ -2007,12 +2007,14 @@ int main(int argc, char **argv)
         encs[panel.enc[EN_K4]] = -1; frame(); encs[panel.enc[EN_K4]] = -1; frame(); encs[panel.enc[EN_K4]] = -1; frame();
         ok &= note_force(&t->step[4], 1) == 0u && ((t->step[4].lvl >> 2) & 3u) == LV_GHOST && !(t->step[4].flags & SF_ACCENT);
         check(ok, "NOTES: KNOB 4 its FORCE: HARD, ACC (the step's accent), down to GHOST");
-        encs[panel.enc[EN_PRESET]] = 1; frame();
-        ok = (int8_t)ui.zoom == 1;
-        encs[panel.enc[EN_PRESET]] = -1; frame(); encs[panel.enc[EN_PRESET]] = -1; frame();
-        ok &= (int8_t)ui.zoom == -1;
-        encs[panel.enc[EN_PRESET]] = 1; frame();
-        check(ok && (int8_t)ui.zoom == 0 && t->preset == t->preset, "NOTES: PRESETS zooms (16 -> 32, then 8; the sound stays)");
+        {   uint32_t preset0 = t->preset;                /* (the sheet zooms, the preset does not: "the sound stays") */
+            encs[panel.enc[EN_PRESET]] = 1; frame();
+            ok = (int8_t)ui.zoom == 1;
+            encs[panel.enc[EN_PRESET]] = -1; frame(); encs[panel.enc[EN_PRESET]] = -1; frame();
+            ok &= (int8_t)ui.zoom == -1;
+            encs[panel.enc[EN_PRESET]] = 1; frame();
+            check(ok && (int8_t)ui.zoom == 0 && t->preset == preset0, "NOTES: PRESETS zooms (16 -> 32, then 8; the sound stays)");
+        }
         ui.force = 1; frame(); ppm("notes-chord");
         tap(B_OCTUP); frame();
         check(song.octave == 1 && !ui.sheet, "NOTES: OCT+ tapped: the octave up, as before (on release)");
@@ -2115,7 +2117,7 @@ int main(int argc, char **argv)
             if (R(30) == 0) held = 0;
             if (R(700) == 0) ly_lock = (uint8_t)R(LY_COUNT);              /* (a layer locked open, at random) */
             fm1_in.buttons = held & ~(1u << panel.btn[B_HOME]);
-            if (R(4) == 0) encs[R(7)] += (int32_t)R(5) - 2;
+            if (R(4) == 0) { uint32_t ek = R(7), dv = R(5); encs[ek] += (int32_t)dv - 2; }   /* (one R() per statement: two in one is UB) */
             fm1_in.notes = R(10) == 0 ? (1u << R(27)) : (R(3) ? fm1_in.notes : 0);
             frame();
             if (ui.menu) { ui.menu = 0; ui.force = 1; }               /* (the menu is tested above) */
