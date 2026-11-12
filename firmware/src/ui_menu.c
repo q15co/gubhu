@@ -200,7 +200,7 @@ UI_SMALL static void draw_menu(void)
                 if (i == MI_CPU1 && !mi_cpu1_have())
                     cv_text(xv + 8, y + 30, &FONT_S, "NOT RUNNING", C_AMB);   /* (cpu1.c: ABOUT says 1 CORE) */
             }
-            if (MS_FIRST[sec + 1u] - MS_FIRST[sec] <= 3u) {   /* (SYSTEM has four rows with 2ND CORE: its fourth
+            if (MS_FIRST[sec + 1u] - MS_FIRST[sec] <= 3) {    /* (SYSTEM has four rows with 2ND CORE: its fourth
                                                                * row, ABOUT, takes the help's place) */
                 cv_text(4, MI_Y0 + 3 * MI_DY + 6, &FONT_S, "SELECT SECTION  KNOB SETS", C_DIM);
                 cv_text(4, MI_Y0 + 3 * MI_DY + 22, &FONT_S, "OCT+ OK   OCT- CLOSE", C_DIM);   /* (rows .. 218) */

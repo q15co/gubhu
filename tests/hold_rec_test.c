@@ -51,7 +51,7 @@ static void live_take(uint32_t ti, int voice, const char *what, int pass2)
 {
     track_t *t = &trk[ti];
     const uint32_t C1 = 36, SC[3] = {48, 50, 52};
-    uint32_t age0, restarts = 0, cuts = 0, k, b, i;
+    uint32_t age0, restarts = 0, cuts = 0, k, i;
     int g;
     reset(ti, voice);
     SB = div_samples(2) / CTL;
@@ -88,7 +88,7 @@ static void live_take(uint32_t ti, int voice, const char *what, int pass2)
     song.rec = 0;
     while (t->seq_idx != 0 || (clk_pos != 0 && 0)) block();
     {
-        uint32_t first = 0, gated = 0, restarts2 = 0, a0 = 0;
+        uint32_t gated = 0, restarts2 = 0, a0 = 0;
         for (k = 0; k < 10u * SB; k++) {
             uint32_t a;
             block();
@@ -223,7 +223,7 @@ static void free_take(uint32_t ti, int voice, const char *what, int quant_off)
 {
     track_t *t = &trk[ti];
     const uint32_t C1 = 36, SC[3] = {48, 50, 52};
-    uint32_t k, SBk, gated = 0, restarts = 0, a0 = 0, a, late = 0, scale_on = 0, i;
+    uint32_t k, gated = 0, restarts = 0, a0 = 0, a, late = 0, scale_on = 0, i;
     int g;
     char b2[200];
     reset(ti, voice);

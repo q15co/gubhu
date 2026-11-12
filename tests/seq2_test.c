@@ -1585,7 +1585,7 @@ static void t_hold2(void)
 static void t_plock(void)
 {
     track_t *t = &trk[0];
-    uint32_t i, bpb = (uint32_t)((double)FS * 60.0 / 120.0 / CTL + 0.5), ok1, ok2, ok3, ok4;
+    uint32_t i, ok1, ok2, ok3, ok4;
     int16_t at2, at3, dist0;
     reset(120);
     host_preset(t, 0, 7);                             /* ANALOG TRAP PLUCK: P_E0 = WAVE (0..4) */
