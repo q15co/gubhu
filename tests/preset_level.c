@@ -49,6 +49,7 @@ int main(int argc, char **argv)
     uint32_t frames = 0, e, pi, b, n, i;
     const uint32_t step = FS * 60u / 100u / 4u, nb = (FS * 9u / 2u) / CTL, tail = (FS / 4u) / CTL;
     int32_t o[2 * CTL];
+    int32_t pk;                                       /* the loudest sample of the phrase, both channels */
     if (!w || !rep || !raw)
         return 1;
     wav_hdr(w, 0);
@@ -63,7 +64,7 @@ int main(int argc, char **argv)
             memset(held, 0, sizeof held);
             for (b = 0; b < FS / CTL; b++)                    /* the last one's sends die out (not kept) */
                 mix_block(o, CTL);
-            fprintf(rep, "%u %u %d %d %s\n", e, pi, role, (int)PRESET_TRIM[e][pi], name);   /* (the trim this binary was built with) */
+            pk = 0;
             for (b = 0; b < nb + tail; b++) {
                 uint32_t s0 = b * CTL, s1 = s0 + CTL, st;
                 for (n = 0; n < 128u; n++)
@@ -95,11 +96,17 @@ int main(int argc, char **argv)
                 mix_block(o, CTL);
                 for (i = 0; i < CTL; i++) {
                     int32_t m = (o[2 * i] + o[2 * i + 1]) / 2;
+                    int32_t al = o[2 * i] < 0 ? -o[2 * i] : o[2 * i], ar = o[2 * i + 1] < 0 ? -o[2 * i + 1] : o[2 * i + 1];
+                    if (al > pk) pk = al;
+                    if (ar > pk) pk = ar;
                     wav_put(w, o[2 * i], o[2 * i + 1]);
                     fwrite(&m, 4, 1, raw);
                     frames++;
                 }
             }
+            /* (the trim this binary was built with, and the peak: at LIM_T the master limiter is holding the
+             * output, and no trim can raise that preset's loudness: tools/level_presets.py leaves it alone) */
+            fprintf(rep, "%u %u %d %d %d %s\n", e, pi, role, (int)PRESET_TRIM[e][pi], (int)pk, name);
         }
     fseek(w, 0, SEEK_SET);
     wav_hdr(w, frames);
