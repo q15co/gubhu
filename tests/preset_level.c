@@ -63,7 +63,7 @@ int main(int argc, char **argv)
             memset(held, 0, sizeof held);
             for (b = 0; b < FS / CTL; b++)                    /* the last one's sends die out (not kept) */
                 mix_block(o, CTL);
-            fprintf(rep, "%u %u %d %s\n", e, pi, role, name);
+            fprintf(rep, "%u %u %d %d %s\n", e, pi, role, (int)PRESET_TRIM[e][pi], name);   /* (the trim this binary was built with) */
             for (b = 0; b < nb + tail; b++) {
                 uint32_t s0 = b * CTL, s1 = s0 + CTL, st;
                 for (n = 0; n < 128u; n++)
