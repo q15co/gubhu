@@ -458,7 +458,7 @@ UI_SMALL static void step_edit(uint32_t slot, int32_t steps)
     }
 }
 
-/* a new project: every track empty, the default sounds, 90 BPM (TOOLS > NEW) */
+/* a new project: every track empty, the default sounds, 112 BPM in the genre's key (TOOLS > NEW) */
 UI_SMALL static void project_new(void)
 {
     uint32_t i;
@@ -477,6 +477,7 @@ UI_SMALL static void project_new(void)
         }
         fm1_irq_on();
     }
+    genre_key_defaults();                               /* the parts start in the song's key */
     TDRUM->p[P_E0] = DRUM_DEFAULT_KIT;
     memset(drum_tune, 0, sizeof drum_tune);             /* (2.7) every drum sound as the kit has it */
     memset(drum_dec, 0, sizeof drum_dec);
