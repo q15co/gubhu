@@ -358,6 +358,20 @@ static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int
 
 /* a UNISON voice's start phases moved by r (Q32: a turn of its note), as if it had started that much of a period
  * sooner: in phase the voices stack, spread they sum as noise */
+/* (2.8.x) the start spread a UNISON voice gets: a function of the note and the voice, never of what played before
+ * it. A global draw made a preset's level depend on how many notes preceded it (SAMPLE GM KIT read +9.4 dB over
+ * POLY on a tree that only added two preset rows above it) and left the unison check unstable against unrelated
+ * work. The voices also step by the golden ratio, so eight of them spread evenly instead of possibly clustering
+ * (eight in phase at half velocity sum to roughly +12 dB). */
+static uint32_t unison_draw(uint32_t note, uint32_t i)
+{
+    uint32_t x = note * 2654435769u + i * 0x9E3779B9u;
+    x ^= x >> 15;
+    x *= 2246822519u;
+    x ^= x >> 13;
+    return x;
+}
+
 static void unison_spread(track_t *t, voice_t *v, uint32_t r)
 {
     const engine_t *e = ENGINES[t->engine];
@@ -404,11 +418,9 @@ static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int g
                 continue;                                   /* no room for this extra UNISON voice */
             /* level: about the same sum for 8 or 4 voices at random phases */
             voice_start(t, v, note, nv >= NVOICE ? vel * 36u / 100u : nv > 1u ? vel / 2u : vel, glide);
-            if (nv > 1u && i && !was_sounding) {   /* random start phases (SAMPLE: its start; not SLICE): */
-                static uint32_t seed = 0x1234567u;          /* in phase they stack, evenly spread they cancel */
-                seed = seed * 1664525u + 1013904223u;
-                unison_spread(t, v, seed);
-            } else if (nv > 1u && i && (v->pend & VP_ON))
+            if (nv > 1u && i && !was_sounding) {   /* spread start phases (SAMPLE: its start; not SLICE): */
+                unison_spread(t, v, unison_draw((uint32_t)note, (uint32_t)i));   /* (in phase they stack, */
+            } else if (nv > 1u && i && (v->pend & VP_ON))                        /*  spread they cancel) */
                 v->pend |= VP_UNI;                          /* (a sample's, after its fade: spread as it starts) */
         } else {                                            /* legato: new pitch, same envelope */
             v->note = (uint8_t)note;
@@ -803,14 +815,12 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
         vmod_t m;
         int32_t env, pitch;
         if ((v->pend & VP_ON) && !v->active && !fade) {   /* (2.8.3) faded out: the sample's note, from silence */
-            uint32_t pf = v->pend;
+            uint32_t pf = v->pend, pn = v->pend_note;
             v->pend = 0;
             if (voice_room(t, 0)) {                     /* (it was not counted while fading: within the budget) */
-                voice_start(t, v, v->pend_note, v->pend_vel, (pf & VP_GLIDE) != 0);
+                voice_start(t, v, pn, v->pend_vel, (pf & VP_GLIDE) != 0);
                 if (pf & VP_UNI) {                      /* (after Clipper 1.2) UNISON: not in phase with the others */
-                    static uint32_t seed = 0x13579BDu;
-                    seed = seed * 1664525u + 1013904223u;
-                    unison_spread(t, v, seed);
+                    unison_spread(t, v, unison_draw(pn, i));
                 }
                 if (pf & VP_OFF) {                      /* let go within the fade (~1.5 ms): released as it starts */
                     v->gate = 0;
