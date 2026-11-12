@@ -6,8 +6,12 @@
  * on average). Each engine now spreads all of its oscillators by the same time shift (their relative phases, the
  * timbre, as they were); SAMPLE starts a voice up to four periods later (at most 256 source samples).
  * For every preset of every engine, notes 36 and 60 (velocity 100, chorus, delay, reverb off): the rms over
- * 0.05 .. 0.55 s in UNISON (the preset's DETUNE) against POLY. Fails when a render is more than +8 dB over POLY or an
- * engine's mean over +5 dB. Exit status: failed checks. (The same file as Clipper's, which also plays UNI4.) */
+ * 0.05 .. 0.55 s in UNISON (the preset's DETUNE) against POLY. The start phases are a random draw (voice.c's seed,
+ * advanced by every unison voice started): one render is one draw, so each preset is measured over DRAWS draws and
+ * its mean is the figure, or a preset would read differently depending on which presets were played before it
+ * (gubhu #10: SAMPLE GM KIT, a kick, read +9.4 dB on one draw and +3.8 on another). Fails when a render is more
+ * than +8 dB over POLY or an engine's mean over +5 dB. Exit status: failed checks. (The same file as Clipper's,
+ * which also plays UNI4.) */
 #define main hostsim_main
 #include "hostsim.c"
 #undef main
@@ -58,6 +62,7 @@ static const char *const MN[NM] = { "UNISON", "UNI4" };
 static const uint32_t MODE[NM] = { V_UNISON };
 static const char *const MN[NM] = { "UNISON" };
 #endif
+#define DRAWS 4u                                   /* a preset's unison level is a random draw: its mean */
 /* engine e: in each unison mode, the mean unison / POLY ratio (dB) of its presets at notes 36 and 60 */
 static void engine(uint32_t e, int *fails)
 {
@@ -72,7 +77,11 @@ static void engine(uint32_t e, int *fails)
             uint32_t note = k ? 60u : 36u;
             double r0 = play(e, p, V_POLY, note);
             for (m = 0; m < NM; m++) {
-                double d = 20 * log10((play(e, p, MODE[m], note) + 1) / (r0 + 1));
+                double d = 0;
+                uint32_t j;
+                for (j = 0; j < DRAWS; j++)             /* the start phases are a draw (the header) */
+                    d += 20 * log10((play(e, p, MODE[m], note) + 1) / (r0 + 1));
+                d /= DRAWS;
                 if (d > 8.0) {
                     printf("unison: %-7s %-6s %-14s note %u: %+.1f dB over POLY  FAIL\n", en->name, MN[m],
                            en->presets[p].name, note, d);

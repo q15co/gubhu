@@ -156,6 +156,16 @@ static const preset_t ANALOG_PRESETS[] = {
      XP(P_LD_PIT + 1, 1, P_LRATE + 1, 80, P_LFADE + 1, 60, P_GLIDE + 1, 30)},
     {"SAW BASS", {0, 6, 64, 0, 52, 30, 40, 64}, {0, 60, 60, 20}, 30, 1, FX(8, 0, 0, 4), XP(P_TRANS + 1, -24)},
     {"SINE PAD", {3, 10, 64, 4, 90, 0, 0, 32}, {80, 90, 118, 90}, 0, 0, FX(0, 60, 20, 65)},
+    /* the amapiano log drum as a pitched part (gubhu #2): the kit's LOG lane stays the unpitched sub, this is the
+     * tuned instrument layered over it. A sine body in the log's register (TRN -12: A2 55 Hz to D3 73), the pitch
+     * envelope for the attack's thump (ENV > PIT), a little noise as the click, and CUT 62 with the envelope on it
+     * (fenv 20) for the woody body. MONO, so a slide is one voice gliding (GLMOD TIME, GLD 51 = 40.4 ms, inside the
+     * genre's 20..80 ms). SUS 0: a hit decays, it does not hold. */
+    {"LOG DEEP", {3, 0, 0, 8, 62, 8, 24, 64}, {0, 62, 0, 34}, 20, 1, FX(0, 0, 0, 0),
+     XP(P_GLIDE + 1, 51, P_GLMODE + 1, 1, P_ED_PIT + 1, 26, P_TRANS + 1, -12)},
+    /* the dust: the same recipe driven harder, with a shorter decay and a harder transient */
+    {"LOG DUST", {3, 0, 0, 16, 70, 12, 64, 64}, {0, 50, 0, 30}, 34, 1, FX(0, 0, 0, 0),
+     XP(P_GLIDE + 1, 51, P_GLMODE + 1, 1, P_ED_PIT + 1, 36, P_TRANS + 1, -12)},
 };
 
 /* (after Clipper 1.2) UNISON (voice.c unison_spread): both oscillators moved by r (Q32) of a turn of the note,
