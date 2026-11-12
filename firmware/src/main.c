@@ -180,7 +180,8 @@ UI_SMALL static void felucca_init(void)
         }
         track_defaults_steps(t);              /* the sequencers start empty */
     }
-    TDRUM->p[P_E0] = DRUM_DEFAULT_KIT;        /* the 808 kit */
+    genre_key_defaults();                     /* the parts start in the song's key, A Dorian */
+    TDRUM->p[P_E0] = DRUM_DEFAULT_KIT;        /* the amapiano kit */
     song.sel = 0;
     song.master_q12 = 2048;
     autosave_resume();                        /* the project as it was left (project.c) */

@@ -152,10 +152,21 @@ static void preset_extras(int16_t *p, const preset_t *pr)
     }
 }
 
+/* The instrument a fresh unit is, without a project. Amapiano sits at 108..115 BPM with 112 its
+ * consensus, and its sixteenths carry 20..30 code units of swing (the display is MPC
+ * 50 + code / 4, so 30 is 57.5 % inside the genre band of 55..60). Both are defaults of the tables
+ * below, not of the loader: a saved project carries its own tempo and swing and keeps them. */
+#define GENRE_BPM 112
+#define GENRE_SWING 30                 /* the global only: P_SSWING stays 0, or the two would add up */
+/* The key every synth part starts in. Amapiano's defining vamp is Dorian i9 to IV9, the minor with a
+ * major sixth, so a fresh instrument is already in A Dorian (N_NOTE A, N_SCALE DOR). */
+#define GENRE_ROOT 9                   /* A */
+#define GENRE_SCALE 3                  /* DOR */
+#define GENRE_QUANT 1                  /* SNAP: the scale is heard, no key is silent (seq.c kb_pitch) */
 
 static const param_desc_t GP[G_COUNT] = {
-    [G_BPM] = PD("BPM", F_BPM, 40, 240, 90),
-    [G_SWING] = PD("SWING", F_SWING, 0, 100, 0),
+    [G_BPM] = PD("BPM", F_BPM, 40, 240, GENRE_BPM),
+    [G_SWING] = PD("SWING", F_SWING, 0, 100, GENRE_SWING),
     [G_CLOCK] = PE("CLICK", N_CLICK, 0),            /* (the old CLK slot: projects keep their format) */
     [G_TUNE] = PD("TUNE", F_INT, -50, 50, 0),
     [G_DTIME] = PE("TIME", N_DLY, 1),
@@ -205,6 +216,23 @@ static const param_desc_t GP[G_COUNT] = {
     [G_BEND] = PD("BEND", F_SEMI, 1, 12, 2),      /* 2.6, GLO > MIDI 2: MIDI pitch bend's range (a setting of the FM-1) */
     [G_FXFADE] = PD("FADE", F_INT, 0, 15, 0),     /* 2.7.2: the punch-in FX fade (FX layer SELECT), 0 off .. 15 (punch.c) */
 };
+
+/* a fresh project's key: every synth part on the one key, the way the key gesture writes it
+ * across the parts (ui_layers.c). Without this the parts each start in chromatic C, so the first chord
+ * you play is not the song's. QUANT is SNAP, not OFF: a scale is only applied to the keys under SNAP or
+ * WHITE (seq.c kb_pitch) or in chord mode, so a root and a scale alone would leave the keyboard
+ * chromatic and the key inaudible. SNAP rounds down instead of silencing the black keys. Call it after
+ * the sounds are in: apply_preset_to keeps ROOT..QUANT, but track_defaults writes their defaults, and
+ * both a boot and a NEW project walk through those. */
+static void genre_key_defaults(void)
+{
+    uint32_t i;
+    for (i = 0; i < NPART; i++) {
+        trk[i].p[P_ROOT] = GENRE_ROOT;
+        trk[i].p[P_SCALE] = GENRE_SCALE;
+        trk[i].p[P_QUANT] = GENRE_QUANT;
+    }
+}
 
 static const param_desc_t DRUM_KIT_DESC = PE("KIT", DRUM_KIT_NAMES, 0);
 /* the INSERT's A B C as its TYPE means them (TP's ranges and defaults): the drives DRIVE TONE LEVEL, CRUSH BITS RATE

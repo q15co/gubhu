@@ -22,6 +22,7 @@ static void boot_as_main(void)
         if (i < NPART) { set_engine_of(t, TRK_DEF[i][0]); apply_preset_to(t, TRK_DEF[i][1]); t->engine = t->eng_req; }
         track_defaults_steps(t);
     }
+    genre_key_defaults();                          /* as felucca_init: the parts start in the song's key */
     TDRUM->p[P_E0] = DRUM_DEFAULT_KIT;
     song.sel = 0;
     autosave_resume();
@@ -80,14 +81,14 @@ static void pitch_check(const char *when)
         check(a > c * 0.97 && a < c * 1.03, b);
     }
 }
-/* the FM-1's key C4 (key 7) on track k: the note its voice plays */
-static int key_note(uint32_t k)
+/* the FM-1's key `key` on track k: the note its voice plays */
+static int key_note(uint32_t k, uint32_t key)
 {
     uint32_t i, f;
     int n = -1;
     song.sel = (uint8_t)k;
     for (f = 0; f < 4; f++) ui_frame();
-    fm1_in.notes = 1u << 7;
+    fm1_in.notes = 1u << key;
     for (f = 0; f < 6; f++) ui_frame();
     for (i = 0; i < NVOICE; i++) if (trk[k].v[i].active && trk[k].v[i].gate) n = trk[k].v[i].note;
     fm1_in.notes = 0;
@@ -99,21 +100,55 @@ static void key_check(const char *when)
     uint32_t k;
     char b[160];
     for (k = 0; k < NPART; k++) {
-        int a = key_note(k), c;
+        int a = key_note(k, 7), c;
         printf("boot_sound: %s track %u: octave %d, TRN %d, key C4 plays note %d\n", when, k + 1, song.octave, trk[k].p[P_TRANS], a);
         apply_preset_to(&trk[k], trk[k].preset);
-        c = key_note(k);
+        c = key_note(k, 7);
         printf("boot_sound: %s track %u: the sound loaded again, key C4 plays note %d\n", when, k + 1, c);
         snprintf(b, sizeof b, "%s: track %u, key C4 plays the same note as with the sound loaded again", when, k + 1);
         check(a == c, b);
     }
 }
+/* C#4 (key 8) under SNAP lands on C4 (key 7): both are in A Dorian, and the scale is what rounds the
+ * one into the other. With the quantiser OFF the two keys play different notes -- which is what a fresh
+ * instrument did while its parts carried a key the keyboard never applied. */
+static void snap_check(const char *when)
+{
+    uint32_t k;
+    char b[160];
+    for (k = 0; k < NPART; k++) {
+        int c = key_note(k, 7), cs = key_note(k, 8);
+        printf("boot_sound: %s track %u: key C4 %d, key C#4 %d (QNT SNAP)\n", when, k + 1, c, cs);
+        snprintf(b, sizeof b, "%s: part %u snaps C#4 to C4 (the scale is heard)", when, (unsigned)k + 1u);
+        check(cs == c, b);
+    }
+}
+/* what a first power-on on blank flash is. The boot's own ordering is what the emulator shows, so
+ * the host asserts it here rather than on the tables alone. */
+static void defaults_check(const char *when)
+{
+    uint32_t k;
+    char b[160];
+    snprintf(b, sizeof b, "%s: 112 BPM, 30 swing (the genre's)", when);
+    check(song.g[G_BPM] == 112 && song.g[G_SWING] == 30, b);
+    snprintf(b, sizeof b, "%s: the drum track on the amapiano kit", when);
+    check(strcmp(DRUM_KIT_NAMES[TDRUM->p[P_E0]], "AMAPIANO") == 0, b);
+    for (k = 0; k < NPART; k++) {
+        snprintf(b, sizeof b, "%s: part %u in A Dorian", when, (unsigned)k + 1u);
+        check(trk[k].p[P_ROOT] == 9 && trk[k].p[P_SCALE] == 3, b);
+        snprintf(b, sizeof b, "%s: part %u snaps to the scale", when, (unsigned)k + 1u);
+        check(trk[k].p[P_QUANT] == 1, b);
+    }
+}
+
 int main(void)
 {
     uint32_t i;
     harness_init();
     memset(nor, 0xFF, sizeof nor);               /* 1. a first install: nothing in the flash */
     boot_as_main();
+    defaults_check("first power-on");
+    snap_check("first power-on");
     compare("first power-on");
     boot_as_main();
     boot_as_main();
@@ -141,6 +176,29 @@ int main(void)
               "over Clipper's working project: track 1 gets its default sound (808 BOOM, TRN -24)");
         check(trk[0].step[0].time == ST_NOTE && trk[0].step[0].note[0] == 48, "... and keeps its pattern");
         key_check("over Clipper's working project");
+    }
+    {   /* 4. a project of one's own: the defaults are the boot's, never the loader's */
+        static project_t q;
+        uint32_t k;
+        song.g[G_BPM] = 95;
+        song.g[G_SWING] = 12;
+        TDRUM->p[P_E0] = DRUM_SAMPLED + 3;         /* (80S, not the boot's amapiano kit) */
+        for (k = 0; k < NPART; k++) {
+            trk[k].p[P_ROOT] = 2;                  /* D */
+            trk[k].p[P_SCALE] = 2;                 /* MIN */
+            trk[k].p[P_QUANT] = 0;                 /* OFF: the file's choice, not the boot's */
+        }
+        proj_capture(&q);
+        q.sum = proj_sum(&q);
+        st_save(OBJ_AUTOSAVE, &q, sizeof q);
+        boot_as_main();
+        check(song.g[G_BPM] == 95 && song.g[G_SWING] == 12, "a saved project keeps its tempo and swing");
+        check(TDRUM->p[P_E0] == DRUM_SAMPLED + 3, "a saved project keeps its kit");
+        for (k = 0; k < NPART; k++) {
+            char b[160];
+            snprintf(b, sizeof b, "a saved project keeps part %u's root, scale and quantiser", (unsigned)k + 1u);
+            check(trk[k].p[P_ROOT] == 2 && trk[k].p[P_SCALE] == 2 && trk[k].p[P_QUANT] == 0, b);
+        }
     }
     printf("boot_sound: %d failed\n", fails);
     return fails != 0;
