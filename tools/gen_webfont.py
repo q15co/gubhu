@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
-"""The FM-1's own font for the web editor: Terminus 8x16 (assets/fonts/ter-u16n.bdf, SIL OFL 1.1), as a
-TrueType font whose outlines are the bitmap's pixels (each row's runs of lit pixels as rectangles), so the
-editor shows the same letters as the screen, crisp at 16 px and its multiples. Written into web/editor.html
+"""The FM-1's own font for the web editor: Spleen 8x16 (assets/fonts/spleen-8x16.bdf, BSD-2-Clause), the face
+the panel draws, as a TrueType font whose outlines are the bitmap's pixels (each row's runs of lit pixels as
+rectangles), so the editor shows the same letters as the screen, crisp at 16 px and its multiples. Written
+into web/editor.html
 as a data: URI between the /*SLOOP-FONT*/ markers (no extra file: the editor also runs from file://, where
 a font file next to it may not load).
   tools/gen_webfont.py [editor.html]
@@ -17,7 +18,7 @@ from fontTools.fontBuilder import FontBuilder
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 
 ROOT = Path(__file__).resolve().parents[1]
-BDF = ROOT / "assets" / "fonts" / "ter-u16n.bdf"
+BDF = ROOT / "assets" / "fonts" / "spleen-8x16.bdf"
 PX = 64                                    # font units per pixel: 16 px = 1024 units per em
 KEEP = [(0x20, 0x7E), (0xA0, 0xFF), (0x2010, 0x2027), (0x2030, 0x203A), (0x2190, 0x21FF), (0x2200, 0x22FF),
         (0x2500, 0x25FF), (0x2600, 0x266F)]

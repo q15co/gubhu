@@ -1,6 +1,8 @@
 # 0003: FM1 bitmap typography
 
-Date: 2026-11-13. Status: accepted.
+Date: 2026-11-13. Status: superseded by [0004](0004-fm1-screen-type-spleen.md), which replaces Terminus
+with Spleen after the fork's identity review. The reasoning below stands as the record of why the established
+face was kept for the colour-role work, and of the conditions a replacement had to meet.
 
 ## Context
 
