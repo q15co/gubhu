@@ -1,6 +1,8 @@
 # 0004: FM1 screen type
 
-Date: 2026-11-13. Status: accepted. Replaces [0003](0003-fm1-bitmap-typography.md).
+Date: 2026-11-13. Status: superseded by [0005](0005-fm1-screen-type-tamzen.md), which keeps the structure
+below (one family, capitals only, the editor following the panel) but changes the face to Tamzen.
+Replaces [0003](0003-fm1-bitmap-typography.md).
 
 ## Context
 

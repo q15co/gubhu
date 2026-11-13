@@ -1,14 +1,14 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* The screen font (gfx.c cv_text, tools/gen_font.py). GUBHU: Spleen 8x16 (S) and 16x32 (L), in capitals only, stored
- * at 1 bit a pixel (5376 and 5120 bytes instead of 21504 and 12288). Checked: every character 32..255 draws exactly
- * the BDF's pixels of its capital (assets/fonts/spleen-8x16.bdf, read here); every glyph of FONT_S (Latin-1) and
- * FONT_L (digits, signs, capitals) in several colours, at several offsets (clipped at every edge of the canvas, and
- * with a graph y offset), hashed, and the same through the 4-bit format (anti-aliased fonts); the advance and bitmap
- * widths (text_w: the layout of 2.5, unchanged); the data size. Exit status: the number of failed checks. */
+/* The screen font (gfx.c cv_text, tools/gen_font.py). GUBHU: Tamzen Bold, in capitals only, stored at 1 bit a
+ * pixel (5376 bytes instead of 21504). Checked: every character 32..255 draws exactly the BDF's pixels of its
+ * capital (assets/fonts/tamzen-8x16b.bdf, read here); every glyph of FONT_S (Latin-1) and FONT_L (the same at 2x)
+ * in several colours, at several offsets (clipped at every edge of the canvas, and with a graph y offset), hashed,
+ * and the same through the 4-bit format (anti-aliased fonts); the advance and bitmap widths (text_w: the layout of
+ * 2.5, unchanged); the data size. Exit status: the number of failed checks. */
 #include <stdint.h>
-#define FONT_S_HASH 0x5a2bbed3u         /* Spleen 8x16, capitals */
-#define FONT_L_HASH 0xf6c0b16bu         /* Spleen 16x32, digits and capitals */
-#define FONT_W_HASH 0x199ec800u         /* advances: 8 and 16 px, as in 2.5; the L bitmaps are 20 px wide, not 24 */
+#define FONT_S_HASH 0x26de988au         /* Tamzen Bold, capitals */
+#define FONT_L_HASH 0xce21bd70u
+#define FONT_W_HASH 0x6840d800u         /* the widths of 2.5 (the same 8 px advance and 24 px L bitmap) */
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -47,20 +47,28 @@ static uint32_t render_all(const felucca_font_t *f, uint32_t ch_hi)
     cv_text(2, 18, &FONT_S, "\xdc\xe9\xb0\xb1 kick snare", 0x07E0u);
     return hash_cv(h);
 }
-/* the BDF's bitmaps, 16 rows of 8 pixels a character */
+/* the BDF's bitmaps, placed in the 8 x 16 cell the way tools/gen_font.py places them: the cell's baseline 12
+ * rows down, a glyph's bitmap hung on its own BBX, at most 8 pixels wide (Tamzen has 16 glyphs of 17 rows: their
+ * topmost row sits above the cell and is clipped, exactly as the generator clips it) */
 static uint8_t bdf[256][16], bdf_has[256];
 static int bdf_read(const char *path)
 {
     FILE *f = fopen(path, "r");
     char ln[128];
-    int enc = -1, row = -1;
+    int enc = -1, bw = 0, bh = 0, seen = 0, top = 0, row = -1, inbmp = 0;
     if (!f) return 0;
     while (fgets(ln, sizeof ln, f)) {
         unsigned v;
-        if (!strncmp(ln, "ENCODING ", 9)) enc = atoi(ln + 9), row = -1;
-        else if (!strncmp(ln, "BITMAP", 6)) row = 0;
-        else if (!strncmp(ln, "ENDCHAR", 7)) { if (enc >= 0 && enc < 256 && row == 16) bdf_has[enc] = 1; row = -1; }
-        else if (row >= 0 && row < 16 && enc >= 0 && enc < 256 && sscanf(ln, "%x", &v) == 1) bdf[enc][row++] = (uint8_t)v;
+        if (!strncmp(ln, "ENCODING ", 9)) enc = atoi(ln + 9), row = -1, seen = 0, inbmp = 0;
+        else if (!strncmp(ln, "BBX ", 4)) {
+            int bx, by;
+            if (sscanf(ln + 4, "%d %d %d %d", &bw, &bh, &bx, &by) == 4) top = 12 - (by + bh);
+        } else if (!strncmp(ln, "BITMAP", 6)) { row = top; seen = 0; inbmp = 1; }
+        else if (!strncmp(ln, "ENDCHAR", 7)) { if (enc >= 0 && enc < 256 && seen == bh && bw <= 8) bdf_has[enc] = 1; enc = -1, row = -1, inbmp = 0; }
+        else if (inbmp && enc >= 0 && enc < 256 && bw <= 8 && sscanf(ln, "%x", &v) == 1) {
+            if (row >= 0 && row < 16) bdf[enc][row] = (uint8_t)v;
+            row++, seen++;
+        }
     }
     fclose(f);
     return 1;
@@ -79,7 +87,7 @@ int main(int argc, char **argv)
     {   /* every character: the BDF's pixels of its capital, nothing else in its 12 x 16 box */
         uint32_t c, x, y, wrong = 0, n = 0;
         char s[2] = {0, 0};
-        int got = bdf_read("assets/fonts/spleen-8x16.bdf");
+        int got = bdf_read("assets/fonts/tamzen-8x16b.bdf");
         for (c = 32; got && c < 256u; c++) {
             uint32_t k = capital(c);
             if (c >= 127u && c < 160u) continue;            /* (C1 controls: '?') */
@@ -94,19 +102,18 @@ int main(int argc, char **argv)
                 }
             n++;
         }
-        check(got && n == 191u && wrong == 0, "every character 32..255: the Spleen pixels of its capital (spleen-8x16.bdf)");
+        check(got && n == 191u && wrong == 0, "every character 32..255: the Tamzen pixels of its capital (tamzen-8x16b.bdf)");
         cv_begin(240, 16, 0); cv_text(0, 0, &FONT_S, "kick snare h\xfcgelton", 0xFFFFu); x = hash_cv(1u);
         cv_begin(240, 16, 0); cv_text(0, 0, &FONT_S, "KICK SNARE H\xdcGELTON", 0xFFFFu);
         check(x == hash_cv(1u) && text_w(&FONT_S, "kick") == text_w(&FONT_S, "KICK"), "lower case shows as capitals, in the same place");
     }
     check(hs == FONT_S_HASH, "FONT_S: every glyph, 4 colours, 6 places (clipped)");
-    check(hl == FONT_L_HASH, "FONT_L: every glyph, 4 colours, 6 places (clipped): the 16x32 drawing");
+    check(hl == FONT_L_HASH, "FONT_L (2x): every glyph, 4 colours, 6 places (clipped): S's bitmaps at 2x");
     check(wsum == FONT_W_HASH, "advance and bitmap widths unchanged (the layout)");
-    {   /* the 4-bit path (anti-aliased fonts) still draws: FONT_S unpacked to 2 pixels a byte, the same pixels
-         * (FONT_L has its own drawing since decision 0004, so it is hashed above through the 1-bit path only) */
+    {   /* the 4-bit path (anti-aliased fonts) still draws: FONT_S unpacked to 2 pixels a byte, the same pixels */
         static uint8_t d4[21504];
         static uint16_t off4[224];
-        felucca_font_t s4 = FONT_S;
+        felucca_font_t s4 = FONT_S, l4 = FONT_L;
         uint32_t g, n = 0, y, xx;
         for (g = 0; g < 224u; g++) {
             uint32_t w = FONT_S.bw[g], bpr = (w + 1u) / 2u;
@@ -119,12 +126,12 @@ int main(int argc, char **argv)
                 }
             n += FONT_S.h * bpr;
         }
-        s4.data = d4; s4.off = off4; s4.bits = 0;
-        check(n == 21504u && render_all(&s4, 255u) == FONT_S_HASH,
+        s4.data = l4.data = d4; s4.off = l4.off = off4; s4.bits = l4.bits = 0;
+        check(n == 21504u && render_all(&s4, 255u) == FONT_S_HASH && render_all(&l4, 95u) == FONT_L_HASH,
               "the 4-bit format (anti-aliased fonts) still draws the same pixels");
     }
-    check(sizeof FONT_S_DATA == 5376u && FONT_S.bits == 1u && sizeof FONT_L_DATA == 5120u && FONT_L.bits == 1u,
-          "the Spleen bitmaps at 1 bit a pixel: 5376 and 5120 bytes (21504 and 12288 at 4 bits)");
+    check(sizeof FONT_S_DATA == 5376u && FONT_S.bits == 1u && FONT_L.bits == 1u && FONT_L.data == FONT_S_DATA,
+          "the Tamzen bitmaps at 1 bit a pixel: 5376 bytes (21504 at 4 bits), L reusing S at 2x");
     printf("%s\n", bad ? "FONT TEST FAILED" : "font test passed");
     return bad;
 }

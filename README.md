@@ -155,7 +155,7 @@ gubhu stands on other people's work, and says so:
   SLOOP is built on.
 - **JieLi AC79 SDK**, Apache-2.0, for the bootloader and configuration files the package needs.
 - **CC0 samples** from Versilian Studios, attributed in `assets/samples-cc0/ATTRIBUTION.txt`.
-- **Spleen** font, for the screen, under its own licence in `assets/fonts/`.
+- **Tamzen** font (a Tamsyn fork), for the screen, under its own licence in `assets/fonts/`.
 
 ## Licence
 
