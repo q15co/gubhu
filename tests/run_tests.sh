@@ -200,6 +200,8 @@ run "installer CLI (fm1_install.py) against a simulated FM-1" python3 tests/inst
 run "the offline editor (one file, nothing next to it); the offline site (sw.js, manifest)" python3 tests/site_test.py
 run "design tokens: web/tokens.css matches DESIGN.md; every pairing passes WCAG AA" sh -c \
     'python3 tools/gen_tokens.py --verify && python3 tools/gen_tokens.py --check'
+run "firmware theme: felucca_theme.h matches DESIGN.md; RGB565 text and graphics pass their contrast gates" sh -c \
+    'python3 tools/gen_theme.py --check && python3 tools/gen_theme.py --verify'
 
 if command -v node >/dev/null 2>&1; then
     run "web pages: editor protocol, samples, packages, update protocol" node web/test_web.mjs
