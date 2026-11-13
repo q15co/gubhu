@@ -167,11 +167,16 @@ static uint32_t busy_now(void)                   /* sounding voices of the parts
  * 1..4 = that track only. Writes DIR/NAME; returns the number of failed checks. */
 static int tracks_demo(const char *dir, const char *name, uint32_t solo)
 {
-    static const uint8_t ACID[16] = {45, 45, 57, 45, 0, 48, 45, 55, 45, 0, 57, 52, 45, 48, 0, 50};
-    static const uint8_t ACIDF[16] = {1, 0, 2, 0, 0, 0, 1, 2, 0, 0, 1, 0, 0, 2, 0, 1};
-    static const uint8_t AM[4] = {57, 60, 64, 67}, FM[4] = {53, 57, 60, 64};
-    static const uint8_t LEAD[12] = {76, 0, 0, 79, 0, 0, 81, 0, 79, 0, 76, 0};
-    const uint32_t frames = 16u * FS, bar = 2u * FS;
+    /* AMAPIANO: a two-bar log-drum phrase that answers the kick (never lands on it), then the
+     * i9 | IV9 stabs on the offbeats: in 1 e & a the keys land on every "and" (A Dorian) */
+    static const uint8_t LOG[32] = {0, 0, 33, 0, 0, 0, 36, 0, 0, 0, 33, 40, 0, 0, 33, 0,
+                                    0, 0, 38, 0, 0, 0, 42, 0, 0, 0, 38, 40, 0, 0, 33, 0};
+    static const uint8_t LOGF[32] = {0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 1, 2, 0, 0, 1, 0,
+                                     0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 1, 2, 0, 0, 2, 0};
+    static const uint8_t AM9[4] = {57, 60, 64, 71}, D9[4] = {50, 54, 57, 64};
+    static const uint8_t LEAD[12] = {76, 0, 0, 0, 0, 0, 79, 0, 0, 0, 81, 0};
+    const uint32_t bar = 4u * 60u * FS / 112u;      /* (4 beats at 112 BPM, exact in samples) */
+    const uint32_t frames = 8u * bar;
     char path[512];
     FILE *w;
     uint32_t f, i, bmax = 0, clips = 0, fail = 0, clap_done = 0, lead_done = 0, keys_t = 0, keys_on = 0;
@@ -183,33 +188,49 @@ static int tracks_demo(const char *dir, const char *name, uint32_t solo)
         return 1;
     }
     host_tracks_init();
-    song.g[G_BPM] = 120;
-    host_preset(t1, 0, 4);
+    song.g[G_BPM] = 112;
+    song.g[G_SWING] = 30;                          /* (MPC 57.5 %: the amapiano sixteenth swing) */
+    host_preset(t1, 0, 22);                        /* (ANALOG LOG DEEP: the pitched log drum) */
     host_preset(t2, 1, 5);
     host_preset(t3, 3, 0);
-    for (i = 0; i < 16u; i++) {
-        uint8_t n = ACID[i];
-        put_step(t1, i, n ? 1u : 0u, &n, n ? ST_NOTE : ST_REST, ACIDF[i]);
+    for (i = 0; i < NPART; i++) {                  /* (A Dorian: the genre's key) */
+        trk[i].p[P_ROOT] = 9;
+        trk[i].p[P_SCALE] = 3;
+    }
+    for (i = 0; i < 32u; i++) {
+        uint8_t n = LOG[i];
+        put_step(t1, i, n ? 1u : 0u, &n, n ? ST_NOTE : ST_REST, LOGF[i]);
     }
     t2->p[P_SLEN] = 32;
-    t2->p[P_SGATE] = 120;
-    for (i = 0; i < 32u; i++)
-        put_step(t2, i, i % 16u == 0u ? 4u : 0u, i < 16u ? AM : FM, i % 16u == 0u ? ST_NOTE : i % 16u < 14u ? ST_TIE : ST_REST, 0);
+    t2->p[P_SGATE] = 45;                           /* (stabs, not a held wall) */
+    for (i = 0; i < 32u; i++) {
+        const uint8_t *ch = i < 16u ? AM9 : D9;
+        uint32_t s = i % 16u;
+        if (s == 2u || s == 6u || s == 10u || s == 14u)
+            put_step(t2, i, 4u, ch, ST_NOTE, s == 2u ? SF_ACCENT : 0u);
+    }
     t3->p[P_SLEN] = 12;
     for (i = 0; i < 12u; i++) {
         uint8_t n = LEAD[i];
         put_step(t3, i, n ? 1u : 0u, &n, n ? ST_NOTE : ST_REST, i == 0u ? SF_ACCENT : 0u);
     }
-    for (i = 0; i < 16u; i++) {                    /* kick 4 on the floor, snare 4 / 12, hats on the 8ths */
+    /* AMAPIANO, the documented grid (108-115 BPM, swing 54-58 %): kick four-on-the-floor but
+     * soft, clap on 2 and 4, rim in 3-3-2 (1& 2e 3& 4e), hat on the offbeats, shaker on every
+     * 16th with the 8ths accented. No snare: a backbeat snare reads as house, not amapiano. */
+    for (i = 0; i < 16u; i++) {
         uint8_t n[4];
         uint32_t k = 0;
-        if (i % 4u == 0u)
+        int kick = (i == 0u || i == 4u || i == 8u || i == 12u);
+        if (kick)
             n[k++] = 36;
         if (i == 4u || i == 12u)
-            n[k++] = 38;
-        if (i % 2u == 0u)
-            n[k++] = i == 14u ? 46 : 42;
-        put_step(td, i, k, n, k ? ST_NOTE : ST_REST, i % 4u == 0u ? SF_ACCENT : 0u);
+            n[k++] = 39;                           /* (the clap, soft: no accent) */
+        if (i == 2u || i == 5u || i == 10u || i == 13u)
+            n[k++] = 37;                           /* (the rim: 1& 2e 3& 4e) */
+        if (i == 2u || i == 6u || i == 10u || i == 14u)
+            n[k++] = 42;                           /* (closed: the kit's open hat is a 380 ms crash wash) */
+        n[k++] = 70;                               /* (the shaker, on every 16th) */
+        put_step(td, i, k, n, ST_NOTE, (i % 2u == 0u && !kick) ? SF_ACCENT : 0u);
     }
     if (solo) {                                    /* the other tracks silent */
         for (i = 0; i < NPART; i++)
@@ -246,8 +267,8 @@ static int tracks_demo(const char *dir, const char *name, uint32_t solo)
             midi_in_q[mi_w++ % MQ] = 0x08u | 0x82u << 8 | 84u << 16;
             lead_done = 2;
         }
-        /* (c) the keys, track 2 selected: two keys at once into the empty pad step 14 */
-        if (song.rec && !keys_on && !keys_t && at_step(t2, &q) == 14u && q < 25u) {
+        /* (c) the keys, track 2 selected: two keys at once into the empty pad step 3 */
+        if (song.rec && !keys_on && !keys_t && at_step(t2, &q) == 3u && q < 25u) {
             song.sel = 1;
             fm1_in.notes = (1u << 7) | (1u << 11);
             keys_on = 1;
@@ -270,23 +291,35 @@ static int tracks_demo(const char *dir, const char *name, uint32_t solo)
     if (solo)
         return bmax > NVOICE;
     {
-        const dstep_t *s4 = &td->dstep[4];
-        const step_t *l1 = &t3->step[1], *p14 = &t2->step[14];
-        uint32_t lanes = dstep_mask(s4), nl = 0, m;
-        int ok_clap;
+        const dstep_t *s0 = &td->dstep[0], *s2 = &td->dstep[2], *s4 = &td->dstep[4];
+        const step_t *l1 = &t3->step[1], *p3 = &t2->step[3];
+        uint32_t lanes = dstep_mask(s4), nl = 0, m, i2;
+        int ok_clap, ok_snare = 1, ok_low = 1;
         for (m = lanes; m; m >>= 1)
             nl += m & 1u;
-        ok_clap = nl == 4u && dstep_has(s4, lane_of_note(39)) && clap_hits == 3u;
+        for (i2 = 0; i2 < 16u; i2++)                /* (no snare anywhere: the genre has no backbeat) */
+            if (dstep_has(&td->dstep[i2], lane_of_note(38)))
+                ok_snare = 0;
+        for (i2 = 0; i2 < 32u; i2 += 4u)            /* (the log drum never doubles the kick) */
+            if (t1->step[i2].n)
+                ok_low = 0;
+        ok_clap = nl == 3u && dstep_has(s4, lane_of_note(39)) && dstep_has(s4, lane_of_note(36)) &&
+                  clap_hits == 2u;              /* (kick + shaker: the recorded clap sounds now, the step skips it) */
+        int ok_grid = dstep_has(s0, lane_of_note(36)) && dstep_has(s2, lane_of_note(37)) &&
+                      dstep_has(s2, lane_of_note(42)) && dstep_has(s0, lane_of_note(70)) &&
+                      dstep_has(s4, lane_of_note(70));
         int ok_lead = l1->n == 1u && l1->note[0] == 84u && l1->time == ST_NOTE;
-        int ok_keys = p14->n == 2u && p14->time == ST_NOTE && p14->note[0] == 60u && p14->note[1] == 64u;
-        printf("tracks: recording: drums step 4 = %u lanes (kick snare hat + clap: %s), hits when step 4 played right "
-               "after: %u (want 3: the clap is not triggered twice) %s\n", nl, dstep_has(s4, lane_of_note(39)) ? "yes" : "no",
+        int ok_keys = p3->n == 2u && p3->time == ST_NOTE && p3->note[0] == 60u && p3->note[1] == 64u;
+        printf("tracks: amapiano: step 4 = %u lanes (kick + clap + shaker: %s), no snare %s, log drum off the kick "
+               "%s, rim/hat/shaker grid %s\n", nl, dstep_has(s4, lane_of_note(39)) ? "yes" : "no",
+               ok_snare ? "ok" : "FAIL", ok_low ? "ok" : "FAIL", ok_grid ? "ok" : "FAIL");
+        printf("tracks: amapiano: hits when step 4 played right after the recorded clap: %u (want 2: not twice) %s\n",
                clap_hits, ok_clap ? "ok" : "FAIL");
-        printf("tracks: recording: MIDI ch 3 -> lead step 1 = %u (want 84) %s; keys -> pad step 14 = %u notes %u %u %s\n",
-               l1->note[0], ok_lead ? "ok" : "FAIL", p14->n, p14->note[0], p14->note[1], ok_keys ? "ok" : "FAIL");
+        printf("tracks: recording: MIDI ch 3 -> lead step 1 = %u (want 84) %s; keys -> pad step 3 = %u notes %u %u %s\n",
+               l1->note[0], ok_lead ? "ok" : "FAIL", p3->n, p3->note[0], p3->note[1], ok_keys ? "ok" : "FAIL");
         printf("tracks: voices sounding at most %u (budget %u) %s; given up to another part %u; %u samples near full "
                "scale\n", bmax, NVOICE, bmax <= NVOICE ? "ok" : "FAIL", voice_kills - kills0, clips);
-        fail = !ok_clap + !ok_lead + !ok_keys + (bmax > NVOICE) + (clips > 0);
+        fail = !ok_clap + !ok_snare + !ok_low + !ok_grid + !ok_lead + !ok_keys + (bmax > NVOICE) + (clips > 0);
     }
     return (int)fail;
 }
