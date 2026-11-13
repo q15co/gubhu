@@ -728,65 +728,7 @@ UI_SMALL static void autosave_tick(void)                /* main loop */
 
 static uint8_t drch_seed;                           /* a settings object as 2.5 wrote it: the drum channel was the
                                                      * project's then (autosave_resume takes it from a 2.5 autosave) */
-/* A fresh unit boots on a groove, not silence: the amapiano starter. It is written first, and a
- * saved project (below) then overwrites it whole, so it only survives when there is nothing saved.
- * The pattern is the one the host test pins (tests/hostsim.c tracks_demo): log drum off the kick,
- * i9 | IV9 on the offbeats, soft four-on-the-floor, rim 3-3-2, shaker on the 16ths, no snare. */
-UI_SMALL static void starter_amapiano(void)
-{
-    static const uint8_t LOG[32] = {0, 0, 33, 0, 0, 0, 36, 0, 0, 0, 33, 40, 0, 0, 33, 0,
-                                    0, 0, 38, 0, 0, 0, 42, 0, 0, 0, 38, 40, 0, 0, 33, 0};
-    static const uint8_t LOGF[32] = {0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 1, 2, 0, 0, 1, 0,
-                                     0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 1, 2, 0, 0, 2, 0};
-    static const uint8_t AM9[4] = {57, 60, 64, 71}, D9[4] = {50, 54, 57, 64};
-    track_t *t1 = &trk[0], *t2 = &trk[1];
-    uint32_t i;
-
-    set_engine_of(t1, 0);
-    apply_preset_to(t1, 22);                        /* (ANALOG LOG DEEP: the pitched log drum) */
-    for (i = 0; i < 32u; i++) {
-        step_t *s = &t1->step[i];
-        memset(s, 0, sizeof *s);
-        s->time = ST_REST;
-        if (LOG[i]) {
-            s->n = 1;
-            s->note[0] = LOG[i];
-            s->time = ST_NOTE;
-            s->flags = (uint8_t)(LOGF[i] & (SF_ACCENT | SF_SLIDE));
-            s->vel = 100;
-        }
-    }
-    t2->p[P_SLEN] = 32;
-    t2->p[P_SGATE] = 45;                            /* (stabs, not a held wall) */
-    for (i = 0; i < 32u; i++) {
-        step_t *s = &t2->step[i];
-        const uint8_t *ch = i < 16u ? AM9 : D9;
-        uint32_t q = i % 16u;
-        memset(s, 0, sizeof *s);
-        s->time = ST_REST;
-        if (q == 2u || q == 6u || q == 10u || q == 14u) {
-            s->n = 4;
-            s->note[0] = ch[0], s->note[1] = ch[1], s->note[2] = ch[2], s->note[3] = ch[3];
-            s->time = ST_NOTE;
-            s->flags = q == 2u ? SF_ACCENT : 0u;
-            s->vel = 100;
-        }
-    }
-    for (i = 0; i < 16u; i++) {
-        dstep_t *d = &TDRUM->dstep[i];
-        int kick = (i == 0u || i == 4u || i == 8u || i == 12u);
-        memset(d, 0, sizeof *d);
-        if (kick)
-            dstep_set(d, lane_of_note(36), LV_NORM, 0);                 /* the kick: soft, no accent */
-        if (i == 4u || i == 12u)
-            dstep_set(d, lane_of_note(39), LV_NORM, 0);                 /* the clap */
-        if (i == 2u || i == 5u || i == 10u || i == 13u)
-            dstep_set(d, lane_of_note(37), LV_HARD, 0);                 /* the rim: 1& 2e 3& 4e */
-        if (i == 2u || i == 6u || i == 10u || i == 14u)
-            dstep_set(d, lane_of_note(42), LV_NORM, 0);                 /* the closed hat on the offbeats */
-        dstep_set(d, lane_of_note(70), (i % 2u == 0u && !kick) ? LV_HARD : LV_NORM, 0);   /* the shaker */
-    }
-}
+#include "starter.c"
 
 UI_SMALL static void autosave_resume(void)              /* power-on: the project as it was left (felucca_init) */
 {
