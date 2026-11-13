@@ -45,7 +45,7 @@ assets, is entirely governed by the GPL.
 | What | Licence | Where |
 | --- | --- | --- |
 | Instrument and drum samples (Versilian Studios VSCO-2 CE, VCSL; Sonic Pi: SCRCH) | CC0 1.0 | `assets/samples-cc0/`, provenance in `ATTRIBUTION.txt` there |
-| Spleen font 8x16 and 16x32: the FM-1's screen (8x16 for labels, Latin-1; 16x32 for values and titles), and the web editor's font (the 8x16; `tools/gen_webfont.py` makes it a TrueType font inlined in `web/editor.html`) | BSD-2-Clause | `assets/fonts/spleen-8x16.bdf`, `assets/fonts/spleen-16x32.bdf`, `assets/fonts/Spleen-LICENSE.txt` |
+| Tamzen font 8x16 Bold: the FM-1's screen (labels, Latin-1; the values and titles are the same glyphs at 2x), and the web editor's font (`tools/gen_webfont.py` makes it a TrueType font inlined in `web/editor.html`). A fork of Tamsyn by Scott Fial, extended by Sunaku | The Tamsyn licence: permission to use, copy, modify and distribute, no warranty | `assets/fonts/tamzen-8x16b.bdf`, `assets/fonts/Tamzen-LICENSE.txt` |
 | Fukiai icon font (Hügelton Instruments), web editor only | MIT | `web/fukiai.ttf`, `web/FUKIAI-LICENSE.txt` |
 | CrispyZebra by Leo Kuroshita (<https://github.com/hugelton/CrispyZebra>): the PHASE engine's waveforms are a C port of its oscillator | GPL-3.0 | `firmware/src/eng_phase.c` |
 | klattsch by Tony Gies (<https://github.com/tgies/klattsch>): design reference for the VOICE (formant) engine; no code copied. Formant data from Klatt (1980) / Hillenbrand et al. (1995) | MIT (klattsch) | credit only |

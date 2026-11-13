@@ -685,7 +685,7 @@ The song's settings can only be edited while it is stopped (*STOP FIRST*). An em
 
 The **title line** of every screen also carries short messages: *KEY D*, *ERASED*, *AGAIN: SAVE*, *NEXT: B*, *chain A B B C*, *lock flt 12*…
 
-The lettering is **Spleen**, all in **capitals**: an 8 × 16 pixel cell for labels, and a 16 × 32 drawing of the same family for values and titles, so the large type is drawn rather than enlarged; the layout is unchanged (same 8 × 16 cell and the same advances).
+The lettering is **Tamzen**, all in **capitals**: a broader, rounder face than the console font it replaces, at the same 8 × 16 cell and with the same advances, so no screen moved; the large values and titles are the same glyphs at 2x.
 
 ---
 
