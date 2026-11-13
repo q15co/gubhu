@@ -181,6 +181,7 @@ sends/DIGITAL/reverb e7300b18533ad0f2
 sends/DIGITAL/all c5ac0e9084b3c54e
 sends/DIGITAL/dist 1c055b97ac0e23ac
 song/4track_mix 98532af20f7b4d31
+song/starter_scenes e7489c7291692fef
 slicer/gate/ANALOG_DARK_STR 254a2e23a4e028bd
 slicer/stut/DIGITAL_RHODES bd7cf0fa9a98ce22
 slicer/song_gate_stut 63b91e6114945bd0

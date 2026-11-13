@@ -26,9 +26,19 @@
  *    selected track changes, the keys while the selected track changes, with ARP and the voice modes).
  * env: GOLDEN_UPDATE=1 rewrites GOLDEN_FILE, BUDGET_UPDATE=1 rewrites CPU_FILE (on purpose: review the
  * diff), VERBOSE=1 prints every render's numbers, JOBS=n children at once (default 8). */
+#define FELUCCA_ARRANGER 1
 #define main hostsim_main
 #include "hostsim.c"
 #undef main
+#define PROJ_HOST 1
+static uint32_t trk_def_engine(uint32_t i) { return i < NPART ? (uint32_t)(i == 2u ? 4u : i) : 0u; }
+static void set_engine_of(track_t *t, uint32_t e) { t->eng_req = (uint8_t)e; }
+static void apply_preset_to(track_t *t, uint32_t pi) { host_preset(t, t->eng_req, pi); }
+#include "../firmware/src/project.c"
+#include "../firmware/src/starter.c"
+static struct { uint8_t force; } ui;
+static uint8_t sync_reload;
+#include "../firmware/src/arranger_scene.c"
 #ifdef __APPLE__
 #include <libproc.h>
 #include <sys/resource.h>
@@ -167,7 +177,7 @@ static void phrase(track_t *t, uint32_t base)
 }
 
 /* ------------------------------------------------------------- jobs --- */
-enum { J_PRESET, J_MODE, J_SENDS, J_DRUMS, J_SONG, J_CPU, J_CHECK, J_SLICER };
+enum { J_PRESET, J_MODE, J_SENDS, J_DRUMS, J_SONG, J_STARTER, J_CPU, J_CHECK, J_SLICER };
 typedef struct {
     char name[64];
     uint8_t kind, e, pi, arg, cpu_notes;
@@ -308,6 +318,33 @@ static void job_song(const job_t *j)
     finish();
 }
 
+/* the fresh unit's actual starter slots through the song arranger: four bars each of intro, build,
+ * drop and break at 112 BPM, then the automatic stop and the release / FX tail. */
+static void job_starter(const job_t *j)
+{
+    const uint32_t bar = 4u * 60u * FS / 112u, frames = 16u * bar;
+    uint32_t i, seen = 0;
+    (void)j;
+    host_tracks_init();
+    host_preset(&trk[2], 4, 5);                    /* the unused third part, as felucca_init */
+    starter_amapiano();
+    arr_defaults(&arrangement);
+    arrangement_enabled = 1;
+    transport_req = 1;
+    while (fpos < frames) {
+        blk();
+        if (arrangement_clock.running)
+            seen |= 1u << arrangement_clock.index;
+    }
+    blk();                                          /* arr_elapse follows arr_next: process the final bar boundary */
+    R.ok = seen == 15u && !song.playing;           /* not just a hash: A, B, C and D all played */
+    rel_at = fpos;
+    dc_end = fpos;
+    finish();
+    for (i = 0; i < NTRK; i++)                     /* no section leaves a held sequencer note behind */
+        R.ok &= !trk[i].seq_n;
+}
+
 /* CPU: parts[k] = {engine, preset, notes} (POLY, SUS 127, no ARP; SLICE: MODE LOOP), drums on 16ths if parts[3][0];
  * 0.5 s to settle, then 1 s counted */
 /* this thread's CPU time: unlike the wall clock it does not count the time the host gave to others */
@@ -428,6 +465,9 @@ static int run_job_body(job_t *j)
         break;
     case J_SONG:
         job_song(j);
+        break;
+    case J_STARTER:
+        job_starter(j);
         break;
     case J_SLICER:
         job_slicer(j);
@@ -860,6 +900,7 @@ int main(int argc, char **argv)
             j->arg = (uint8_t)k0;
         }
     add(J_SONG, "song/4track_mix");
+    add(J_STARTER, "song/starter_scenes");
     {   /* the SLICER */
         job_t *j = add(J_SLICER, "slicer/gate/ANALOG_DARK_STR");
         j->e = 0, j->pi = 10, j->arg = 0;
@@ -997,6 +1038,8 @@ int main(int argc, char **argv)
                      r->tail_peak, LIM_TAIL);
         if (r->vmax > NVOICE)
             snprintf(why + strlen(why), sizeof why - strlen(why), " %u voices (budget %u);", r->vmax, NVOICE);
+        if (j->kind == J_STARTER && !r->ok)
+            snprintf(why + strlen(why), sizeof why - strlen(why), " the four scenes did not play and stop cleanly;");
         if (why[0]) {
             printf("regress: HEALTH FAIL  %s:%s\n", j->name, why);
             h_fail++;
