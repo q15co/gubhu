@@ -233,7 +233,8 @@ UI_SMALL static void menu_close(void)
 UI_SMALL static void mi_set(uint32_t i, int32_t s)
 {
     switch (i) {
-    case MI_COLOR: {                                   /* both ways round; OCT+ the next. 2.7: your theme after MONO
+    case MI_COLOR: {                                   /* both ways round; OCT+ the next. Issue #6: GUBHU after MONO,
+                                                        * then your theme after the built-ins (2.7)
                                                         * (the palette number stays the last built-in one: an older
                                                         * SLOOP shows that) */
         uint32_t n = NPALETTES + (theme_valid ? 1u : 0u), at = theme_shown() ? NPALETTES : settings.palette % NPALETTES;

@@ -376,6 +376,16 @@ int main(int argc, char **argv)
     check(dstep_has(&TDRUM->dstep[0], 2) && dstep_has(&TDRUM->dstep[4], 2) && dstep_has(&TDRUM->dstep[8], 2) &&
           !dstep_has(&TDRUM->dstep[1], 2), "SEQ + white keys 1, 5, 9: snare steps");
     ppm("layer-steps");
+    {   /* GUBHU: empty is hollow as well as dark; programmed is filled. The playhead remains its own top band. */
+        uint32_t keep = settings.palette;
+        settings.palette = PAL_GUBHU; palette_set(PAL_GUBHU); ui.force = 1; frame();
+        ppm("layer-steps-gubhu");
+        check(swap16(screen[42 * 240 + 62]) == GUBHU_STEP_OUTLINE &&
+              swap16(screen[73 * 240 + 62]) == GUBHU_STEP_OUTLINE &&
+              swap16(screen[42 * 240 + 2]) == GUBHU_TRACK_4 && pal_step_outline == GUBHU_STEP_OUTLINE,
+              "GUBHU steps: empty has a rectangular outline, programmed a fill (state is not surface colour alone)");
+        settings.palette = keep; palette_set(keep); ui.force = 1; frame();
+    }
     fm1_in.notes = 1u << 7; frame();                  /* step 5 held + KNOB 2 / 3: level, ratchet */
     encs[panel.enc[EN_K2]] = 1; frame();
     encs[panel.enc[EN_K3]] = 2; frame();
@@ -801,10 +811,27 @@ int main(int argc, char **argv)
             check(ok, "menu FILTER RESO (2.7.2): OFF..10, knob steps and stops, OCT+ wraps");
             ui.menu = 0; go_home();
         }
-        {   /* 2.7: your theme (the editor's Theme page): checked, then MENU > COLOR after MONO, by its name */
+        {   /* Built-ins stay at their stored indices; GUBHU is appended, then the editor's custom theme. */
             theme_t th;
             int ok = 1, k;
             uint32_t pal0 = settings.palette;
+            static const char *const OLD_NAMES[5] = {"GREEN", "AMBER", "CYAN", "RED", "MONO"};
+            for (k = 0; k < 5; k++) {
+                settings.palette = (uint32_t)k;
+                palette_set(settings.palette);
+                ok &= !strcmp(PALETTES[k].name, OLD_NAMES[k]) && pal[4] == PALETTES[k].c[4] && C_BLACK == 0u &&
+                      C_WHITE == 0xFFFFu && TE_COL[0] == TE_COL_DEF[0] && pal_step_outline == 0u;
+            }
+            ok &= NPALETTES == 6u && PAL_GUBHU == 5u && !strcmp(PALETTES[PAL_GUBHU].name, "GUBHU");
+            settings.palette = PAL_GUBHU;
+            palette_set(PAL_GUBHU);
+            ok &= pal[0] == GUBHU_C_LINE && pal[1] == GUBHU_C_DIM && pal[2] == GUBHU_C_GRAY &&
+                  pal[3] == GUBHU_C_AMB && pal[4] == GUBHU_C_HI && C_BLACK == GUBHU_BG && C_WHITE == GUBHU_ACCENT &&
+                  TE_G1 == GUBHU_EMPTY && TE_G2 == GUBHU_PANEL && TE_G3 == GUBHU_C_GRAY && TE_G4 == GUBHU_C_HI &&
+                  TE_COL[0] == GUBHU_TRACK_1 && TE_COL[1] == GUBHU_TRACK_2 && TE_COL[2] == GUBHU_TRACK_3 &&
+                  TE_COL[3] == GUBHU_TRACK_4 && pal_step_outline == GUBHU_STEP_OUTLINE;
+            check(ok, "palette compatibility: GREEN..MONO keep 0..4 and black/white/default tracks; GUBHU is 5 with token roles");
+            ok = 1;
             memset(&th, 0, sizeof th);
             th.magic = THEME_MAGIC;
             memcpy(th.name, "SUNSET", 6);
@@ -859,14 +886,25 @@ int main(int argc, char **argv)
                       "printable name); a first-beta THM1 taken with an accent");
             ui.menu = 1; ui.menu_sel = MI_COLOR; ui.force = 1; frame();
             settings.palette = 4; theme_on = 0; palette_set(4);
-            encs[panel.enc[EN_K1]] = 1; frame();      /* no theme: MONO -> GREEN, as ever */
-            ok = settings.palette == 0u && !theme_on;
+            encs[panel.enc[EN_K1]] = 1; frame();      /* no custom theme: MONO -> GUBHU */
+            ok = settings.palette == PAL_GUBHU && !theme_on;
+            encs[panel.enc[EN_K1]] = 1; frame();      /* GUBHU -> GREEN (the other old indices still wrap) */
+            ok &= settings.palette == 0u && !theme_on;
             settings.palette = 4; palette_set(4);
             theme = th; theme_valid = 1;
-            encs[panel.enc[EN_K1]] = 1; frame();      /* MONO -> SUNSET */
-            ok &= theme_on && settings.palette == 4u && pal[0] == th.c[0] && pal[4] == th.c[4] && C_BLACK == th.bg &&
+            encs[panel.enc[EN_K1]] = 1; frame();      /* MONO -> GUBHU */
+            ok &= !theme_on && settings.palette == PAL_GUBHU && !strcmp(mi_value(MI_COLOR, &(uint16_t){0}), "GUBHU") &&
+                  C_BLACK == GUBHU_BG && C_WHITE == GUBHU_ACCENT && TE_COL[3] == GUBHU_TRACK_4;
+            check(ok, "MENU > COLOR transition: MONO -> GUBHU, with Ink, Maize and screen-safe tracks");
+            ok = 1;
+            ui.force = 1; frame(); ppm("menu-gubhu");
+            encs[panel.enc[EN_K1]] = 1; frame();      /* GUBHU -> SUNSET */
+            ok &= theme_on && settings.palette == PAL_GUBHU && pal[0] == th.c[0] && pal[4] == th.c[4] && C_BLACK == th.bg &&
                   TE_COL[0] == th.trk[0] && TE_COL[3] == th.trk[3] && TE_MID[1] == rgb565_scale(th.trk[1], 2, 3) &&
+                  pal_step_outline == 0u &&
                   (lights_word() >> 30 & 1u) && !strcmp(mi_value(MI_COLOR, &(uint16_t){0}), "SUNSET") && C_WHITE == th.hi;
+            check(ok, "MENU > COLOR transitions: MONO -> GUBHU -> custom, with GUBHU and custom roles");
+            ok = 1;
             ui.force = 1; frame(); ppm("menu-theme");
             ui.menu = 0; go_home(); ui.force = 1; frame(); frame(); ppm("tracks-theme");   /* (a page in the theme) */
             open_family(FAM_EDIT); ui.force = 1; frame(); frame(); ppm("edit-theme");
@@ -901,10 +939,10 @@ int main(int argc, char **argv)
             ok &= theme_on && pal[2] == th.c[2];
             theme_valid = 0;                          /* (gone: the editor removed it) */
             palette_set(settings.palette);
-            ok &= pal[4] == PALETTES[settings.palette].c[4] && strcmp(mi_value(MI_COLOR, &(uint16_t){0}), "SUNSET");
+            ok &= pal[4] == PALETTES[settings.palette].c[4] && !strcmp(mi_value(MI_COLOR, &(uint16_t){0}), "GREEN");
             theme_on = 0; settings.palette = pal0; palette_set(pal0);
             ui.menu_sel = MI_USB; ui.force = 1; frame();      /* (back to AUDIO) */
-            check(ok, "MENU > COLOR (2.7): your theme after MONO, by its name; its colours, background and the tracks'; bit 30");
+            check(ok, "custom theme: light round trip, settings bit 30, wrap to GREEN and back, removal reveals GREEN");
         }
         {   /* 2.7: the page counter counts the pages SELECT walks (SEQ: STEP 1/2, PATTERN 2/2; SONG not counted) */
             uint32_t n, k1, n1, k2, n2, k3 = 0, n3 = 0, menu0 = ui.menu, sel0 = ui.menu_sel;

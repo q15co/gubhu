@@ -26,6 +26,7 @@ typedef struct {               /* proportional, see tools/gen_font.py */
                                 * bit first, each glyph from a whole byte); 0 = 2 pixels a byte, alpha 0..15 */
 } felucca_font_t;
 #include "felucca_font.h"
+#include "felucca_theme.h"           /* DESIGN.md -> tools/gen_theme.py: the GUBHU built-in's semantic roles */
 
 #define CV_MAX (240u * 124u)      /* the graph strip is 240 x 124 */
 static uint16_t cv_px[CV_MAX] __attribute__((section(".pool")));
@@ -49,8 +50,12 @@ static const palette_t PALETTES[] = {
     {"CYAN", {RGB(0, 30, 50), RGB(0, 62, 96), RGB(16, 112, 160), RGB(56, 172, 222), RGB(140, 222, 255)}},
     {"RED", {RGB(52, 8, 8), RGB(100, 18, 14), RGB(170, 36, 26), RGB(226, 64, 48), RGB(255, 112, 92)}},
     {"MONO", {RGB(40, 40, 40), RGB(80, 80, 80), RGB(130, 130, 130), RGB(186, 186, 186), RGB(226, 226, 226)}},
+    {"GUBHU", {GUBHU_C_LINE, GUBHU_C_DIM, GUBHU_C_GRAY, GUBHU_C_AMB, GUBHU_C_HI}},
 };
 #define NPALETTES (sizeof(PALETTES) / sizeof(PALETTES[0]))
+#define PAL_MONO 4u                           /* stored settings compatibility: never insert before this */
+#define PAL_GUBHU 5u                          /* issue #6: appended after MONO; the custom theme follows it */
+_Static_assert(NPALETTES == 6u, "palette indices are a saved-settings compatibility surface");
 static uint16_t pal[5];
 #define C_LINE pal[0]                /* 1 rules, separators */
 #define C_DIM pal[1]                 /* 2 inactive, empty steps, units */
@@ -59,7 +64,7 @@ static uint16_t pal[5];
 #define C_HI pal[4]                  /* 5 values, curves */
 
 /* SLOOP 2.7: your own theme, made in the web editor (its Theme page): the five steps of the screen and the four
- * tracks' colours, with a name. MENU > COLOR shows it after MONO (theme_on: panel.c lights_word bit 30; the
+ * tracks' colours, with a name. MENU > COLOR shows it after the built-ins (theme_on: panel.c lights_word bit 30; the
  * palette number stays a built-in one, the one an older SLOOP shows). Kept in the settings object's side record
  * (project.c, storage.c st_side): an older SLOOP never reads it, and forgets it when it saves its settings. */
 #define THEME_MAGIC 0x324D4854u                  /* "THM2" (2.7 beta 2: with the accent) */
@@ -85,6 +90,9 @@ static const uint16_t TE_DIM_DEF[4] = {RGB(14, 40, 86), RGB(10, 66, 38), RGB(86,
 static uint16_t TE_COL[4] = {RGB(40, 124, 255), RGB(30, 204, 112), RGB(255, 198, 24), RGB(255, 98, 26)};
 static uint16_t TE_MID[4] = {RGB(26, 82, 170), RGB(20, 136, 76), RGB(170, 132, 16), RGB(170, 66, 18)};
 static uint16_t TE_DIM[4] = {RGB(14, 40, 86), RGB(10, 66, 38), RGB(86, 66, 8), RGB(86, 32, 8)};
+static const uint16_t GUBHU_TRACKS[4] = {GUBHU_TRACK_1, GUBHU_TRACK_2, GUBHU_TRACK_3, GUBHU_TRACK_4};
+static const uint16_t GUBHU_GREYS[4] = {GUBHU_TE_G1, GUBHU_TE_G2, GUBHU_TE_G3, GUBHU_TE_G4};
+static uint16_t pal_step_outline;              /* GUBHU: empty steps are outlined, not a low-contrast fill alone */
 static uint16_t rgb565_scale(uint32_t c, uint32_t num, uint32_t den)
 {
     uint32_t r = ((c >> 11) & 31u) * num / den, g = ((c >> 5) & 63u) * num / den, b = (c & 31u) * num / den;
@@ -165,17 +173,20 @@ static uint16_t te_gray(uint32_t c)
 static void palette_set(uint32_t i)              /* built-in palette i, or the theme when it is chosen (2.7) */
 {
     uint32_t k;
-    int cu = theme_shown();
+    int cu = theme_shown(), gu;
+    i %= NPALETTES;
+    gu = !cu && i == PAL_GUBHU;
     for (k = 0; k < 5u; k++)
-        pal[k] = cu ? theme.c[k] : PALETTES[i % NPALETTES].c[k];
-    pal_bg = cu ? theme.bg : 0u;
-    pal_hi = cu ? theme.hi : 0xFFFFu;
+        pal[k] = cu ? theme.c[k] : PALETTES[i].c[k];
+    pal_bg = cu ? theme.bg : gu ? GUBHU_BG : 0u;
+    pal_hi = cu ? theme.hi : gu ? GUBHU_ACCENT : 0xFFFFu;
+    pal_step_outline = gu ? GUBHU_STEP_OUTLINE : 0u;
     for (k = 0; k < 4u; k++)
-        te_g[k] = te_gray(TE_G_DEF[k]);
+        te_g[k] = cu ? te_gray(TE_G_DEF[k]) : gu ? GUBHU_GREYS[k] : TE_G_DEF[k];
     for (k = 0; k < 4u; k++) {
-        TE_COL[k] = cu ? theme.trk[k] : TE_COL_DEF[k];
-        TE_MID[k] = cu ? rgb565_scale(theme.trk[k], 2u, 3u) : TE_MID_DEF[k];
-        TE_DIM[k] = cu ? rgb565_scale(theme.trk[k], 1u, 3u) : TE_DIM_DEF[k];
+        TE_COL[k] = cu ? theme.trk[k] : gu ? GUBHU_TRACKS[k] : TE_COL_DEF[k];
+        TE_MID[k] = cu || gu ? rgb565_scale(TE_COL[k], 2u, 3u) : TE_MID_DEF[k];
+        TE_DIM[k] = cu || gu ? rgb565_scale(TE_COL[k], 1u, 3u) : TE_DIM_DEF[k];
     }
 }
 

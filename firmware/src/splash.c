@@ -18,7 +18,7 @@ UI_SMALL static void sloop_logo_draw(uint32_t y0)
     cv_begin(240, h * k, C_BLACK);
     for (i = 0; i < 5u; i++) {                          /* small, at the top left: S white, L O O P the tracks' colours */
         c[0] = L[i];
-        px = cv_text(px, 0, &FONT_L, c, i ? TE_COL_DEF[i - 1u] : C_WHITE);
+        px = cv_text(px, 0, &FONT_L, c, i ? TE_COL[i - 1u] : C_WHITE);
     }
     off = (240u - w * k) / 2u;
     for (y = h * k; y-- > 0;)                           /* then k times as big, in place (from the end: nothing read is
@@ -60,7 +60,7 @@ UI_SMALL static void sloop_splash(void)
     if (v[0] == 'S' && v[1] == 'L' && v[5] == ' ')
         v += 6;                                         /* "SLOOP 1.0" -> "1.0" under the wordmark */
     cv_begin(240, 36, C_BLACK);
-    cv_text(120 - text_w(&FONT_S, v) / 2, 0, &FONT_S, v, RGB(196, 196, 204));
-    cv_text(120 - text_w(&FONT_S, "based on felucca") / 2, 18, &FONT_S, "based on felucca", RGB(96, 96, 104));
+    cv_text(120 - text_w(&FONT_S, v) / 2, 0, &FONT_S, v, TE_G4);
+    cv_text(120 - text_w(&FONT_S, "based on felucca") / 2, 18, &FONT_S, "based on felucca", TE_G3);
     cv_blit(0, 202);
 }
