@@ -1,66 +1,67 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* SLOOP boot splash: the logo (tools/gen_logo.py -> sloop_logo.h: 16 colours, RLE runs of
- * (run - 1) << 4 | colour), drawn into the canvas in bands of at most 120 rows. */
+/* GUBHU boot screen: a beadwork band, the wordmark, the firmware's name (docs/DESIGN.md).
+ * Drawn from the active palette, so a unit on MONO gets a monochrome mark and the boot screen
+ * costs no flash beyond its code: the fork's own identity, not the SLOOP sailboat. */
 #ifndef UI_SMALL                 /* (2.7) compiled for size: not the audio path (gfx.c UI_SMALL); the host tests: nothing */
 #define UI_SMALL
 #endif
-#ifndef FELUCCA_LOGO_TEXT       /* (2.7) 1: the boot logo as text, "S" and "LOOP" in the four track colours (4.6 KB of flash
-                                 * less: tools/build.py builds so by itself when the flash is full) */
-#define FELUCCA_LOGO_TEXT 0
-#endif
-#if FELUCCA_LOGO_TEXT
-UI_SMALL static void sloop_logo_draw(uint32_t y0)
-{
-    static const char L[5] = {'S', 'L', 'O', 'O', 'P'};
-    uint32_t i, w = text_w(&FONT_L, "SLOOP"), k = w * 3u <= 232u ? 3u : 2u, h = 32u, off, y, x;
-    int32_t px = 0;
-    char c[2] = {0, 0};
-    cv_begin(240, h * k, C_BLACK);
-    for (i = 0; i < 5u; i++) {                          /* small, at the top left: S white, L O O P the tracks' colours */
-        c[0] = L[i];
-        px = cv_text(px, 0, &FONT_L, c, i ? TE_COL[i - 1u] : C_WHITE);
-    }
-    off = (240u - w * k) / 2u;
-    for (y = h * k; y-- > 0;)                           /* then k times as big, in place (from the end: nothing read is
-                                                         * overwritten before) */
-        for (x = w * k; x-- > 0;)
-            cv_px[y * 240u + off + x] = cv_px[(y / k) * 240u + x / k];
-    for (y = 0; y < h * k; y++)                         /* (the small one's left-over columns) */
-        for (x = 0; x < off; x++)
-            cv_px[y * 240u + x] = swap16(C_BLACK);
-    cv_blit(0, y0 + 60u);
-}
-#else
-#include "sloop_logo.h"
-UI_SMALL static void sloop_logo_draw(uint32_t y0)
-{
-    uint32_t r0;
-    for (r0 = 0; r0 < SLOOP_SPLASH_H; r0 += 120u) {
-        uint32_t rows = SLOOP_SPLASH_H - r0 > 120u ? 120u : SLOOP_SPLASH_H - r0;
-        uint32_t lo = r0 * SLOOP_SPLASH_W, hi = (r0 + rows) * SLOOP_SPLASH_W, pos = 0, i;
-        cv_begin(SLOOP_SPLASH_W, rows, C_BLACK);
-        for (i = 0; i < sizeof SLOOP_SPLASH_RLE && pos < hi; i++) {
-            uint32_t run = (SLOOP_SPLASH_RLE[i] >> 4) + 1u, c = SLOOP_SPLASH_RLE[i] & 15u, p;
-            if (c && pos + run > lo)
-                for (p = pos < lo ? lo : pos; p < pos + run && p < hi; p++)
-                    cv_px[p - lo] = swap16(SLOOP_SPLASH_PAL[c]);
-            pos += run;
-        }
-        cv_blit((240u - SLOOP_SPLASH_W) / 2u, y0 + r0);
-    }
-}
-#endif
 
-/* the boot screen: the logo, the version, where it comes from */
-UI_SMALL static void sloop_splash(void)
+/* The wordmark is a text placeholder (decision 0003) and stays lowercase, which the panel font
+ * cannot draw: gfx.c's glyph() folds a-z onto A-Z. The four distinct letters are cut here from
+ * the same Terminus 8x16 cells the font is generated from, 3x on screen. */
+static const uint8_t WORD_G[16] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x7E, 0xC6, 0xC6, 0xC6, 0xC6, 0xC6, 0x7E, 0x06, 0x06, 0x7C, 0x00};
+static const uint8_t WORD_U[16] = {0x00, 0x00, 0x00, 0x00, 0x00, 0xC6, 0xC6, 0xC6, 0xC6, 0xC6, 0xC6, 0x7E, 0x00, 0x00, 0x00, 0x00};
+static const uint8_t WORD_B[16] = {0x00, 0x00, 0xC0, 0xC0, 0xC0, 0xFC, 0xC6, 0xC6, 0xC6, 0xC6, 0xC6, 0xFC, 0x00, 0x00, 0x00, 0x00};
+static const uint8_t WORD_H[16] = {0x00, 0x00, 0xC0, 0xC0, 0xC0, 0xFC, 0xC6, 0xC6, 0xC6, 0xC6, 0xC6, 0xC6, 0x00, 0x00, 0x00, 0x00};
+
+/* one bead: a stepped diamond, 12 px wide, 4 px steps (Zulu beadwork geometry). The downbeat of
+ * each bar is a longer bead, so the strand has the rhythm of the sequencer's 16 steps */
+UI_SMALL static void bead(int32_t cx, int32_t y, uint16_t c, uint32_t big)
 {
-    lcd_fill(0, 0, 240, 240, C_BLACK);
-    sloop_logo_draw(10);
+    cv_rect(cx - 2, y, 4, 4, c);
+    cv_rect(cx - 4, y + 4, 8, 4, c);
+    cv_rect(cx - 6, y + 8, 12, 4, c);
+    cv_rect(cx - (big ? 6 : 4), y + 12, big ? 12 : 8, 4, c);
+    cv_rect(cx - 2, y + 16, 4, 4, c);
+    if (big)
+        cv_rect(cx - 2, y + 20, 4, 4, c);
+}
+
+/* a wordmark letter: its 8x16 cell at 3x, so the lowercase forms keep their x-height and the
+ * 'g' its descender */
+UI_SMALL static void word_letter(const uint8_t *rows, int32_t x, int32_t y, uint16_t c)
+{
+    uint32_t r, b;
+    for (r = 0; r < 16u; r++)
+        for (b = 0; b < 8u; b++)
+            if (rows[r] & (0x80u >> b))
+                cv_rect(x + (int32_t)b * 3, y + (int32_t)r * 3, 3, 3, c);
+}
+
+/* the boot screen: the band, the wordmark, FM1 FIRMWARE, the version */
+UI_SMALL static void gubhu_splash(void)
+{
+    static const uint8_t *const MARK[5] = {WORD_G, WORD_U, WORD_B, WORD_H, WORD_U};
     const char *v = FELUCCA_VERSION;
+    uint32_t i;
+    lcd_fill(0, 0, 240, 240, C_BLACK);
+    cv_begin(240, 32, C_BLACK);                     /* the band: 16 beads, one per step, a bar to a colour */
+    cv_rect(0, 0, 240, 1, C_LINE);
+    for (i = 0; i < 16u; i++)
+        bead(8 + (int32_t)i * 15, (i % 4u) ? 6 : 4, TE_COL[i / 4u], !(i % 4u));
+    cv_rect(0, 30, 240, 1, C_LINE);
+    cv_blit(0, 40);
+    cv_begin(240, 48, C_BLACK);                     /* the wordmark: five letters at 24 px, 120 px wide */
+    for (i = 0; i < 5u; i++)
+        word_letter(MARK[i], 60 + (int32_t)i * 24, 0, C_HI);
+    cv_blit(0, 88);
     if (v[0] == 'S' && v[1] == 'L' && v[5] == ' ')
-        v += 6;                                         /* "SLOOP 1.0" -> "1.0" under the wordmark */
-    cv_begin(240, 36, C_BLACK);
-    cv_text(120 - text_w(&FONT_S, v) / 2, 0, &FONT_S, v, TE_G4);
-    cv_text(120 - text_w(&FONT_S, "based on felucca") / 2, 18, &FONT_S, "based on felucca", TE_G3);
-    cv_blit(0, 202);
+        v += 6;                                     /* "SLOOP 1.0" -> "1.0" under the wordmark */
+    cv_begin(240, 52, C_BLACK);
+    cv_text(120 - text_w(&FONT_S, "FM1 FIRMWARE") / 2, 0, &FONT_S, "FM1 FIRMWARE", C_WHITE);
+    cv_text(120 - text_w(&FONT_S, v) / 2, 34, &FONT_S, v, C_GRAY);
+    cv_blit(0, 152);
+    cv_begin(240, 16, C_BLACK);
+    cv_text(120 - text_w(&FONT_S, "BASED ON FELUCCA") / 2, 0, &FONT_S, "BASED ON FELUCCA", C_DIM);
+    cv_blit(0, 214);
 }

@@ -164,9 +164,13 @@ UI_SMALL static void draw_menu(void)
             int32_t x = 4;
             for (i = 0; i < MS_COUNT; i++) {        /* the sections as tabs: this one lit */
                 int32_t w = text_w(&FONT_S, MS_NAME[i]);
-                if (i == sec)
-                    cv_rect(x - 2, 3, w + 4, 18, C_LINE);
-                cv_text(x, 4, &FONT_S, MS_NAME[i], i == sec ? C_WHITE : C_DIM);
+                if (i == sec) {                     /* the section: a maize frame (the focus ring), not a grey slab */
+                    cv_rect(x - 3, 1, w + 6, 1, C_WHITE);
+                    cv_rect(x - 3, 18, w + 6, 1, C_WHITE);
+                    cv_rect(x - 3, 1, 1, 18, C_WHITE);
+                    cv_rect(x + w + 2, 1, 1, 18, C_WHITE);
+                }
+                cv_text(x, 2, &FONT_S, MS_NAME[i], i == sec ? C_HI : C_GRAY);
                 x += w + 6;                         /* (2.7.1: five sections: 6, the last ends at 236) */
             }
             for (i = MS_FIRST[sec]; i < MS_FIRST[sec + 1u]; i++) {
@@ -176,7 +180,7 @@ UI_SMALL static void draw_menu(void)
                 uint16_t vc;
                 const char *v = mi_value(i, &vc);
                 char k[4] = {'K', (char)('1' + r), 0, 0};
-                cv_rect(4, y + 2, 4, MI_DY - 8, cur ? C_WHITE : TE_COL[r & 3u]);   /* the knob's colour */
+                cv_rect(4, y + 2, 4, MI_DY - 8, TE_COL[r & 3u]);   /* the knob's colour; the label shows the cursor */
                 xv = cv_text(14, y, &FONT_S, k, TE_COL[r & 3u]);
                 cv_text(xv + 6, y, &FONT_S, MI_NAME[i], cur ? C_WHITE : C_GRAY);
                 if (v[0] && text_w(&FONT_L, v) <= 222) {
@@ -186,10 +190,16 @@ UI_SMALL static void draw_menu(void)
                 } else {
                     xv = cv_text(14, y + 24, &FONT_S, "OCT+ OPENS", cur ? C_WHITE : C_DIM);
                 }
-                if (i == MI_COLOR) {                    /* the palette's colours */
+                if (i == MI_COLOR) {                    /* the palette's colours, as a strand of beads */
                     uint32_t q;
-                    for (q = 0; q < 5u; q++)
-                        cv_rect(xv + 10 + (int32_t)q * 14, y + 28, 10, 10, pal[q]);
+                    for (q = 0; q < 5u; q++) {
+                        int32_t bx = xv + 14 + (int32_t)q * 14, by = y + 29;
+                        cv_rect(bx - 1, by, 2, 1, pal[q]);
+                        cv_rect(bx - 2, by + 1, 4, 2, pal[q]);
+                        cv_rect(bx - 3, by + 3, 6, 2, pal[q]);
+                        cv_rect(bx - 2, by + 5, 4, 2, pal[q]);
+                        cv_rect(bx - 1, by + 7, 2, 1, pal[q]);
+                    }
                 }
                 if (i == MI_RATE && usb_rate != usb_rate_now())
                     cv_text(xv + 8, y + 30, &FONT_S, "RESTART", C_AMB);   /* (usb.c: at the next start) */
@@ -202,8 +212,8 @@ UI_SMALL static void draw_menu(void)
             }
             if (MS_FIRST[sec + 1u] - MS_FIRST[sec] <= 3) {    /* (SYSTEM has four rows with 2ND CORE: its fourth
                                                                * row, ABOUT, takes the help's place) */
-                cv_text(4, MI_Y0 + 3 * MI_DY + 6, &FONT_S, "SELECT SECTION  KNOB SETS", C_DIM);
-                cv_text(4, MI_Y0 + 3 * MI_DY + 22, &FONT_S, "OCT+ OK   OCT- CLOSE", C_DIM);   /* (rows .. 218) */
+                cv_text(4, MI_Y0 + 3 * MI_DY + 6, &FONT_S, "SELECT SECTION  KNOB SETS", C_GRAY);
+                cv_text(4, MI_Y0 + 3 * MI_DY + 22, &FONT_S, "OCT+ OK   OCT- CLOSE", C_GRAY);   /* (rows .. 218) */
             }
         }
         cv_oy = 0;
