@@ -1372,10 +1372,26 @@ async function editorSongFile() {
 async function editorTheme() {
   const C = E.CMD, T = E.THEME;
   const gfx = readFileSync(join(HERE, "../firmware/src/gfx.c"), "utf8");
+  const themeHeader = readFileSync(join(HERE, "../firmware/src/felucca_theme.h"), "utf8");
   const rgb = (s) => [...s.matchAll(/RGB\((\d+), (\d+), (\d+)\)/g)].map((m) => [+m[1], +m[2], +m[3]]);
   const pals = [...gfx.matchAll(/\{"(\w+)", \{(RGB[^}]*)\}\}/g)].map((m) => [m[1], rgb(m[2])]);
+  const role = (name) => {
+    const m = new RegExp(`#define ${name} 0x([0-9A-F]+)u /\\* firmware\\.[\\w-]+: (#[0-9A-F]{6}) \\*/`).exec(themeHeader);
+    return m && { code: parseInt(m[1], 16), rgb: T.unhex(m[2]) };
+  };
+  const gp = (/\{"GUBHU", \{([^}]*)\}\}/.exec(gfx) || [])[1] || "";
+  const gc = [...gp.matchAll(/GUBHU_C_(?:LINE|DIM|GRAY|AMB|HI)/g)].map((m) => role(m[0]).rgb);
+  const gt = [1, 2, 3, 4].map((i) => role(`GUBHU_TRACK_${i}`).rgb);
+  pals.push(["GUBHU", gc, role("GUBHU_BG").rgb, role("GUBHU_ACCENT").rgb, gt]);
   const tdef = rgb((/TE_COL_DEF\[4\] = \{([^}]*)\}/.exec(gfx) || [])[1] || "");
   ok(js(pals) === js(T.BUILTIN) && js(tdef) === js(T.TRACKS), "theme: the built-in palettes and track colours == gfx.c (PALETTES, TE_COL_DEF)");
+  const gubhu = T.builtin(5), gCodes = gc.concat([gubhu.bg, gubhu.hi], gubhu.trk).map(T.to565);
+  ok(T.BUILTIN.length === 6 && gubhu.name === "GUBHU" && js(gubhu.bg) === js([11, 3, 22]) && js(gubhu.hi) === js([255, 210, 52])
+    && js(gubhu.trk) === js(gt) && T.readable(gubhu)
+    && js(gCodes) === js([role("GUBHU_C_LINE").code, role("GUBHU_C_DIM").code, role("GUBHU_C_GRAY").code,
+      role("GUBHU_C_AMB").code, role("GUBHU_C_HI").code, role("GUBHU_BG").code, role("GUBHU_ACCENT").code,
+      ...[1, 2, 3, 4].map((i) => role(`GUBHU_TRACK_${i}`).code)]),
+    "theme: GUBHU is index 5; editor ramp, Ink, Maize and tracks have the firmware's exact RGB565 codes");
   ok(/#define THEME_MAGIC 0x324D4854u/.test(gfx) && /#define THEME_MAGIC1 0x314D4854u/.test(gfx)
     && /char name\[8\];[^]*uint16_t c\[5\];[^]*uint16_t trk\[4\];[^]*uint16_t bg;[^]*uint16_t hi;[^]*uint16_t rsv;[^]*uint32_t crc;/.test(gfx)
     && /sizeof\(theme_t\) == 40u/.test(gfx) && T.SIZE === 40 && T.MAGIC === 0x324D4854 && T.MAGIC1 === 0x314D4854,

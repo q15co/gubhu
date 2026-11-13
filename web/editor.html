@@ -4411,13 +4411,16 @@ class SetGate {
 const THEME = {
   ID: 11, SIZE: 40, MAGIC: 0x324D4854, MAGIC1: 0x314D4854, PREFIX: "SLOOP-THEME-1:",
   WHITE: [255, 255, 255], BLACK: [0, 0, 0],
-  /* the FM-1's own palettes (gfx.c PALETTES) and the tracks' colours (TE_COL_DEF), as RGB 0..255 */
+  /* The FM-1's palettes (gfx.c PALETTES) and default tracks (TE_COL_DEF), as RGB 0..255. GUBHU's optional
+     third/fourth/fifth fields are its Ink background, Maize accent and token-derived tracks (felucca_theme.h). */
   BUILTIN: [
     ["GREEN", [[0, 40, 12], [0, 84, 30], [16, 140, 54], [56, 200, 92], [120, 255, 146]]],
     ["AMBER", [[60, 26, 0], [110, 50, 0], [170, 82, 0], [225, 120, 8], [255, 166, 40]]],
     ["CYAN", [[0, 30, 50], [0, 62, 96], [16, 112, 160], [56, 172, 222], [140, 222, 255]]],
     ["RED", [[52, 8, 8], [100, 18, 14], [170, 36, 26], [226, 64, 48], [255, 112, 92]]],
-    ["MONO", [[40, 40, 40], [80, 80, 80], [130, 130, 130], [186, 186, 186], [226, 226, 226]]]],
+    ["MONO", [[40, 40, 40], [80, 80, 80], [130, 130, 130], [186, 186, 186], [226, 226, 226]]],
+    ["GUBHU", [[115, 91, 121], [156, 84, 245], [199, 181, 206], [255, 210, 52], [248, 239, 227]],
+      [11, 3, 22], [255, 210, 52], [[156, 84, 245], [37, 197, 196], [255, 210, 52], [222, 69, 156]]]],
   TRACKS: [[40, 124, 255], [30, 204, 112], [255, 198, 24], [255, 98, 26]],
   to565: ([r, g, b]) => ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3),
   from565: (v) => [Math.round((((v >> 11) & 31) * 255) / 31), Math.round((((v >> 5) & 63) * 255) / 63), Math.round(((v & 31) * 255) / 31)],
@@ -4487,7 +4490,10 @@ const THEME = {
     if (!m) return null;
     try { return THEME.decode(b64dec(m[1])); } catch (e) { return null; }
   },
-  builtin: (i) => ({ name: THEME.BUILTIN[i][0], c: THEME.BUILTIN[i][1].map((x) => x.slice()), trk: THEME.TRACKS.map((x) => x.slice()), bg: [0, 0, 0], hi: [255, 255, 255] }),
+  builtin(i) {
+    const p = THEME.BUILTIN[i], bg = p[2] || THEME.BLACK, hi = p[3] || THEME.WHITE, trk = p[4] || THEME.TRACKS;
+    return { name: p[0], c: p[1].map((x) => x.slice()), trk: trk.map((x) => x.slice()), bg: bg.slice(), hi: hi.slice() };
+  },
   /* five steps from one colour, as the FM-1's palettes go: dark to the colour, the last lighter toward white; on a light
      background (bg given) the other way: faint (light) to strong (dark) */
   ramp(rgb, bg) {
@@ -4860,7 +4866,7 @@ const TEXT = {
     dsBad: "FM-1 が受け付けませんでした", dsCopyAsk: "{k} を {x} のコピーにします。よろしいですか？", dsCopied: "コピーしました:",
     dsStop: "ソングを止めてから保存してください", dsFlash: "フラッシュに書けませんでした", dsSaved: "FM-1 に保存しました",
     tabTheme: "テーマ", thTitle: "テーマ",
-    thHelp: "FM-1 の画面の色を自分で作れます。画面の 5 段階の色（薄い順）、背景、アクセント、4 つのトラックの色を選び、左のプレビューで確認して「FM-1 に送る」。変えるたびに送り直せます。FM-1 では MENU → COLOR の MONO の次に、つけた名前で出ます。白い背景なら「明 ↔ 暗」。",
+    thHelp: "FM-1 の画面の色を自分で作れます。画面の 5 段階の色（薄い順）、背景、アクセント、4 つのトラックの色を選び、左のプレビューで確認して「FM-1 に送る」。変えるたびに送り直せます。FM-1 では MENU → COLOR の組み込みパレット（最後は GUBHU）の次に、つけた名前で出ます。白い背景なら「明 ↔ 暗」。",
     thStart: "もとにする", thScreen: "画面（薄い → 濃い）", thTracks: "トラックの色",
     thAcc: "アクセント", thAccHelp: "触っているもの、カーソル、再生位置", thInvert: "明 ↔ 暗", thFix: "読めるように直す",
     thDarkAcc: "アクセントが背景と近すぎます。FM-1 が受け付けません（メニューのカーソルが見えなくなるため）。",
@@ -5197,7 +5203,7 @@ const TEXT = {
     dsBad: "The FM-1 refused it", dsCopyAsk: "Make {k} a copy of {x}?", dsCopied: "Copied:",
     dsStop: "Stop the song first, then store", dsFlash: "Could not write the flash", dsSaved: "Stored on the FM-1",
     tabTheme: "Theme", thTitle: "Theme",
-    thHelp: "Make the FM-1's screen your own: pick the screen's five colours (faintest first), the background, the accent and the four tracks' colours, check them in the preview, then Send to the FM-1 (again after every change). On the FM-1 it comes after MONO in MENU → COLOR, under the name you gave it. For a white background: Light ↔ dark.",
+    thHelp: "Make the FM-1's screen your own: pick the screen's five colours (faintest first), the background, the accent and the four tracks' colours, check them in the preview, then Send to the FM-1 (again after every change). On the FM-1 it comes after the built-in palettes (after GUBHU) in MENU → COLOR, under the name you gave it. For a white background: Light ↔ dark.",
     thStart: "Start from", thScreen: "Screen (faint → strong)", thTracks: "Track colours",
     thAcc: "Accent", thAccHelp: "what you touch, the cursor, the play head", thInvert: "Light ↔ dark", thFix: "Make it readable",
     thDarkAcc: "The accent is too close to the background: the FM-1 would refuse it (the menu's cursor must stay visible).",
@@ -7053,11 +7059,12 @@ $("thfrom").addEventListener("change", () => {
   const v = $("thfrom").value;
   if (v === "") return;
   const name = TH.t.name, bg = TH.t.bg, hi = THEME.hiOf(TH.t);
+  const wholeTheme = THEME.BUILTIN[+v].length > 2;       /* GUBHU includes its background/accent; old palettes do not */
   TH.t = THEME.builtin(+v);
   TH.t.name = name;
-  TH.t.bg = bg || [0, 0, 0];                           /* (a palette: the screen's five; the background and accent stay;
+  if (!wholeTheme) TH.t.bg = bg || [0, 0, 0];            /* (a palette: the screen's five; the background and accent stay;
                                                           on a light background the palette the other way round) */
-  TH.t.hi = hi;
+  if (!wholeTheme) TH.t.hi = hi;
   if (THEME.light(TH.t.bg)) TH.t.c.reverse();
   TH.from = v;
   renderTheme();
