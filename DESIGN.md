@@ -29,6 +29,12 @@ colors:
   light-surface: "#F8EFE3"
   light-on-surface: "#0B0316"
   light-muted: "#54445D"
+  # FM1 screen variants. The declared primary and secondary do not meet
+  # normal-text contrast on Ink; border does not meet the UI-graphics gate.
+  # These are 35%, 20% and 20% mixes respectively toward on-surface.
+  primary-screen: "#9C54F5"
+  secondary-screen: "#DE459C"
+  border-screen: "#735B79"
 typography:
   display:
     fontFamily: "Exo 2"
@@ -123,6 +129,21 @@ components:
   light-panel:
     backgroundColor: "{colors.light-surface}"
     textColor: "{colors.light-on-surface}"
+firmware:
+  background: "{colors.ink}"
+  accent: "{colors.maize}"
+  panel: "{colors.surface}"
+  empty: "{colors.surface-raised}"
+  empty-outline: "{colors.primary-screen}"
+  line: "{colors.border-screen}"
+  dim: "{colors.primary-screen}"
+  labels: "{colors.muted}"
+  secondary: "{colors.maize}"
+  values: "{colors.on-surface}"
+  track-1: "{colors.primary-screen}"
+  track-2: "{colors.turquoise}"
+  track-3: "{colors.maize}"
+  track-4: "{colors.secondary-screen}"
 ---
 
 # GUBHU — Design System
@@ -159,6 +180,12 @@ The brand lives primarily on deep violet-black **Ink** (`#0B0316`) with warm **I
 | Foreground | `on-surface` | `#F8EFE3` | Body copy and labels |
 | Supporting text | `muted` | `#C7B5CE` | Metadata, secondary descriptions |
 
+The 240x240 RGB565 firmware uses the additional `primary-screen`, `secondary-screen` and `border-screen` variants.
+They are not replacements for the brand colours: they are the minimum deliberate lightening steps used here to clear
+normal-text (4.5:1) or meaningful-graphics (3:1) contrast after RGB565 quantisation. `tools/gen_theme.py` compiles the
+`firmware` role table above and checks the resulting panel values. The existing `MONO` palette remains the mandatory
+monochrome rendering; GUBHU does not replace it.
+
 **Gradient:** For artwork and larger canvases only, blend Indigo → Fuchsia → Sunset → Amber → Maize. Avoid placing important text over a gradient without a solid contrast-preserving backing.
 
 **Contrast:** Check actual rendered text/background combinations against WCAG 2.2 AA: 4.5:1 for normal text, 3:1 for large text and meaningful UI graphics. On primary purple use white; on maize/amber use ink. Never rely on colour alone to convey a sequencer state. The declared colour values are targets, not a claim that every combination passes.
@@ -169,7 +196,7 @@ The brand lives primarily on deep violet-black **Ink** (`#0B0316`) with warm **I
 
 **Exo 2** is the expressive interface headline font; **Inter** is the utilitarian body font; **JetBrains Mono** is reserved for BPM, bar/beat positions, parameter values, file names and debug information. These are implementation font choices, **not a substitute for the custom logo lettering**.
 
-Use short, direct headings. Prefer sentence case in menus; uppercase tracking is appropriate for tiny section labels only when legibility allows. BPM and numeric telemetry should use tabular numerals when supported. On tiny displays use bundled bitmap/system fonts if necessary, while retaining relative hierarchy and spacing.
+Use short, direct headings. Prefer sentence case in menus; uppercase tracking is appropriate for tiny section labels only when legibility allows. BPM and numeric telemetry should use tabular numerals when supported. On tiny displays use bundled bitmap/system fonts if necessary, while retaining relative hierarchy and spacing. The FM1 specifically retains its bundled Terminus bitmap fonts; the decision and its reversal triggers are recorded in [0003: FM1 bitmap typography](docs/decisions/0003-fm1-bitmap-typography.md).
 
 Never shrink essential labels below a legible physical size merely to fit a mockup. On hardware, screen resolution, pixel density and viewing distance determine actual font rasterization.
 
@@ -210,7 +237,7 @@ The **equalizer** uses discrete rounded bars/blocks rather than a continuous sin
 
 **Transport:** Play/stop, record, pattern selection and BPM must be distinguishable by shape, label and state. Destructive actions require explicit confirmation where recoverability is limited.
 
-**Step sequencer:** Use maize for the currently active step, fuchsia or purple for programmed notes, muted surfaces for empty steps, and an additional outline/marker for the playhead. Distinguish *selected*, *playing*, and *triggered* states. Do not infer that the colour palette itself represents musical velocity.
+**Step sequencer:** Use maize for the currently active step, fuchsia or purple for programmed notes, muted surfaces for empty steps, and an additional outline/marker for the playhead. On the FM1, an empty GUBHU step also has a visible rectangular outline: `surface-raised` alone is not the empty-state signal. Distinguish *selected*, *playing*, and *triggered* states. Do not infer that the colour palette itself represents musical velocity.
 
 **Knobs / parameter controls:** Present value, unit and range. Provide keyboard/encoder alternatives and explicit focus. Prefer direct values over skeuomorphic knobs when precision matters.
 

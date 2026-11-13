@@ -27,6 +27,9 @@
   --color-light-surface: #F8EFE3;
   --color-light-on-surface: #0B0316;
   --color-light-muted: #54445D;
+  --color-primary-screen: #9C54F5;
+  --color-secondary-screen: #DE459C;
+  --color-border-screen: #735B79;
   --type-display-family: "Exo 2", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --type-display-size: 48px;
   --type-display-weight: 800;

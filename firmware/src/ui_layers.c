@@ -582,6 +582,7 @@ UI_SMALL static void layer_knobs(uint32_t layer)
 typedef struct {
     char lab[8];
     uint16_t bg, fg, top;        /* fill, text, the 3-pixel top band (0 = none) */
+    uint16_t edge;               /* a rectangular outline (GUBHU's empty steps), 0 = none */
     uint8_t marks;               /* small marks under the label (a ratchet), 0 = none */
     uint8_t tag;                 /* a dot in the top right corner (a nudge or a lock on the step), 0 = none */
     uint8_t cond;                /* top left: the step's fill condition (FC_FILL an "F", FC_NOFILL an "x"), 0 = none */
@@ -591,7 +592,8 @@ UI_SMALL static void tiles_draw(const tile_t *tl, uint32_t *cache)
 {
     uint32_t r, c, sig = 7u;
     for (r = 0; r < 16u; r++)
-        sig = studio_hash(sig * 31u + tl[r].bg * 3u + tl[r].fg * 5u + tl[r].top * 7u + tl[r].marks + tl[r].tag * 11u + tl[r].cond * 13u,
+        sig = studio_hash(sig * 31u + tl[r].bg * 3u + tl[r].fg * 5u + tl[r].top * 7u + tl[r].edge * 17u +
+                          tl[r].marks + tl[r].tag * 11u + tl[r].cond * 13u,
                           tl[r].lab);
     if (!ui.force && sig == *cache)
         return;
@@ -603,6 +605,12 @@ UI_SMALL static void tiles_draw(const tile_t *tl, uint32_t *cache)
             int32_t x = 2 + (int32_t)c * 60;
             uint32_t m;
             cv_rect(x, 2, 56, 32, t->bg);
+            if (t->edge) {                            /* shape, not colour alone: an empty step stays identifiable */
+                cv_rect(x, 2, 56, 1, t->edge);
+                cv_rect(x, 33, 56, 1, t->edge);
+                cv_rect(x, 2, 1, 32, t->edge);
+                cv_rect(x + 55, 2, 1, 32, t->edge);
+            }
             if (t->top)
                 cv_rect(x, 2, 56, 3, t->top);
             te_text_c(x + 28, 9, t->lab, t->fg);
@@ -839,6 +847,7 @@ UI_SMALL static void layer_screen_draw(void)
             tl[i].bg = on ? (lv == LV_GHOST ? TE_DIM[sel & 3u] : lv == LV_SOFT ? TE_MID[sel & 3u] : lv == LV_HARD ? C_WHITE : col)
                           : TE_G1;
             tl[i].fg = on ? C_BLACK : TE_G3;
+            tl[i].edge = on ? 0u : pal_step_outline;
             tl[i].marks = (uint8_t)(on ? rt : 0u);
             tl[i].tag = (uint8_t)step_locked(t, idx);   /* a nudge or a lock on it */
             tl[i].cond = (uint8_t)(step_fill(t, idx) % 3u);   /* its fill condition */

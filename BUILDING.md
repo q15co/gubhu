@@ -149,7 +149,15 @@ in one place and cannot drift:
 python3 tools/gen_tokens.py           # rewrite web/tokens.css
 python3 tools/gen_tokens.py --check   # every text/background pairing against WCAG 2.2 AA
 python3 tools/gen_tokens.py --verify  # fail if web/tokens.css is stale
+python3 tools/gen_theme.py            # rewrite firmware/src/felucca_theme.h
+python3 tools/gen_theme.py --check    # fail if the firmware header is stale
+python3 tools/gen_theme.py --verify   # firmware text / graphics gates after RGB565 quantisation
 ```
+
+The firmware table in `DESIGN.md` maps semantic tokens to the panel's background, accent, five screen roles,
+surfaces and four track colours. Its check expands the actual RGB565 codes with the same rule as the editor,
+so a source hex that passes cannot silently fail after quantisation. Empty GUBHU steps have a rectangular
+outline; their low-contrast raised fill is not the state cue by itself. Both generator modes run in the host suite.
 
 `web/make_site.py` inlines the token file into the installer page, which keeps the built site at one
 request per page. The editor's screen is deliberately not restyled: it mirrors the FM-1's own display,
