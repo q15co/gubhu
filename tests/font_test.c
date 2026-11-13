@@ -1,14 +1,14 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* The screen font (gfx.c cv_text, tools/gen_font.py). SLOOP 2.6: Terminus Bold, in capitals only, stored at 1 bit a
- * pixel (5376 bytes instead of 21504). Checked: every character 32..255 draws exactly the BDF's pixels of its capital
- * (assets/fonts/ter-u16b.bdf, read here); every glyph of FONT_S (1x, Latin-1) and FONT_L (2x) in several colours, at
- * several offsets (clipped at every edge of the canvas, and with a graph y offset), hashed, and the same through the
- * 4-bit format (anti-aliased fonts); the advance and bitmap widths (text_w: the layout of 2.5, unchanged); the data
- * size. Exit status: the number of failed checks. */
+/* The screen font (gfx.c cv_text, tools/gen_font.py). GUBHU: Spleen 8x16 (S) and 16x32 (L), in capitals only, stored
+ * at 1 bit a pixel (5376 and 5120 bytes instead of 21504 and 12288). Checked: every character 32..255 draws exactly
+ * the BDF's pixels of its capital (assets/fonts/spleen-8x16.bdf, read here); every glyph of FONT_S (Latin-1) and
+ * FONT_L (digits, signs, capitals) in several colours, at several offsets (clipped at every edge of the canvas, and
+ * with a graph y offset), hashed, and the same through the 4-bit format (anti-aliased fonts); the advance and bitmap
+ * widths (text_w: the layout of 2.5, unchanged); the data size. Exit status: the number of failed checks. */
 #include <stdint.h>
-#define FONT_S_HASH 0x1c34aa9cu         /* Terminus Bold, capitals (2.6) */
-#define FONT_L_HASH 0x730ceccbu
-#define FONT_W_HASH 0x6840d800u         /* the widths of 2.5 (the regular font's): the same */
+#define FONT_S_HASH 0x5a2bbed3u         /* Spleen 8x16, capitals */
+#define FONT_L_HASH 0xf6c0b16bu         /* Spleen 16x32, digits and capitals */
+#define FONT_W_HASH 0x199ec800u         /* advances: 8 and 16 px, as in 2.5; the L bitmaps are 20 px wide, not 24 */
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -79,7 +79,7 @@ int main(int argc, char **argv)
     {   /* every character: the BDF's pixels of its capital, nothing else in its 12 x 16 box */
         uint32_t c, x, y, wrong = 0, n = 0;
         char s[2] = {0, 0};
-        int got = bdf_read("assets/fonts/ter-u16b.bdf");
+        int got = bdf_read("assets/fonts/spleen-8x16.bdf");
         for (c = 32; got && c < 256u; c++) {
             uint32_t k = capital(c);
             if (c >= 127u && c < 160u) continue;            /* (C1 controls: '?') */
@@ -94,18 +94,19 @@ int main(int argc, char **argv)
                 }
             n++;
         }
-        check(got && n == 191u && wrong == 0, "every character 32..255: the Terminus Bold pixels of its capital (ter-u16b.bdf)");
+        check(got && n == 191u && wrong == 0, "every character 32..255: the Spleen pixels of its capital (spleen-8x16.bdf)");
         cv_begin(240, 16, 0); cv_text(0, 0, &FONT_S, "kick snare h\xfcgelton", 0xFFFFu); x = hash_cv(1u);
         cv_begin(240, 16, 0); cv_text(0, 0, &FONT_S, "KICK SNARE H\xdcGELTON", 0xFFFFu);
         check(x == hash_cv(1u) && text_w(&FONT_S, "kick") == text_w(&FONT_S, "KICK"), "lower case shows as capitals, in the same place");
     }
     check(hs == FONT_S_HASH, "FONT_S: every glyph, 4 colours, 6 places (clipped)");
-    check(hl == FONT_L_HASH, "FONT_L (2x): every glyph, 4 colours, 6 places (clipped): S's bitmaps at 2x");
+    check(hl == FONT_L_HASH, "FONT_L: every glyph, 4 colours, 6 places (clipped): the 16x32 drawing");
     check(wsum == FONT_W_HASH, "advance and bitmap widths unchanged (the layout)");
-    {   /* the 4-bit path (anti-aliased fonts) still draws: FONT_S unpacked to 2 pixels a byte, the same pixels */
+    {   /* the 4-bit path (anti-aliased fonts) still draws: FONT_S unpacked to 2 pixels a byte, the same pixels
+         * (FONT_L has its own drawing since decision 0004, so it is hashed above through the 1-bit path only) */
         static uint8_t d4[21504];
         static uint16_t off4[224];
-        felucca_font_t s4 = FONT_S, l4 = FONT_L;
+        felucca_font_t s4 = FONT_S;
         uint32_t g, n = 0, y, xx;
         for (g = 0; g < 224u; g++) {
             uint32_t w = FONT_S.bw[g], bpr = (w + 1u) / 2u;
@@ -118,11 +119,12 @@ int main(int argc, char **argv)
                 }
             n += FONT_S.h * bpr;
         }
-        s4.data = l4.data = d4; s4.off = l4.off = off4; s4.bits = l4.bits = 0;
-        check(n == 21504u && render_all(&s4, 255u) == FONT_S_HASH && render_all(&l4, 95u) == FONT_L_HASH,
+        s4.data = d4; s4.off = off4; s4.bits = 0;
+        check(n == 21504u && render_all(&s4, 255u) == FONT_S_HASH,
               "the 4-bit format (anti-aliased fonts) still draws the same pixels");
     }
-    check(sizeof FONT_S_DATA == 5376u && FONT_S.bits == 1u, "the Terminus bitmaps at 1 bit a pixel: 5376 bytes (21504 at 4 bits)");
+    check(sizeof FONT_S_DATA == 5376u && FONT_S.bits == 1u && sizeof FONT_L_DATA == 5120u && FONT_L.bits == 1u,
+          "the Spleen bitmaps at 1 bit a pixel: 5376 and 5120 bytes (21504 and 12288 at 4 bits)");
     printf("%s\n", bad ? "FONT TEST FAILED" : "font test passed");
     return bad;
 }

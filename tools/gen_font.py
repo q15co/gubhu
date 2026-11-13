@@ -2,16 +2,17 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
 """Render the bitmap fonts to a C header (assets/fonts/):
-  S  labels / units / status   Latin-1 32..255 at 1x
-  L  large values / titles     32..95 (digits, signs, capitals), the same glyphs at 2x
-Terminus Bold 8x16 (BDF, SIL OFL 1.1). TTF fonts also work through render()
-(anti-aliased, tabular figures via the OpenType `tnum` feature).
+  S  labels / units / status   Latin-1 32..255, Spleen 8x16 at 1x
+  L  large values / titles     32..95 (digits, signs, capitals), Spleen 16x32 at 1x
+Spleen 8x16 and 16x32 (BDF, BSD-2-Clause), two sizes of one family, each drawn
+at its own size rather than enlarged from the other. TTF fonts also work through
+render() (anti-aliased, tabular figures via the OpenType `tnum` feature).
 
 Glyph format: per glyph an advance width, a bitmap width and an offset; the
 bitmap starts FONT_PAD pixels left of the pen position (room for side
 bearings); rows top to bottom. A font whose pixels are all on or off (the
-Terminus pixel font) is stored at 1 bit a pixel (SLOOP 2.6: 5376 bytes
-instead of 21504), the glyph's rows one after the other, high bit first, each
+Spleen pixel fonts) is stored at 1 bit a pixel (S: 5376 bytes instead of
+21504), the glyph's rows one after the other, high bit first, each
 glyph from a whole byte, and marked bits = 1; an anti-aliased one (TTF) stays at
 2 pixels per byte (high nibble first), alpha 0..15, bits = 0 (gfx.c cv_text).
 """
@@ -23,10 +24,11 @@ from PIL import Image, ImageDraw, ImageFont
 FONTS = Path(__file__).resolve().parents[1] / "assets" / "fonts"
 # (name, file, px, scale, pixel, first, last): pixel fonts are rendered without
 # anti-aliasing at their design size and enlarged by an integer factor
-# SLOOP 2.6: Terminus Bold (the same 8 x 16 cell and advances as the regular one: no layout moves), drawn in
-# capitals only (gfx.c glyph); the regular ter-u16n.bdf stays for the web editor's font (gen_webfont.py)
-SIZES = [("S", "ter-u16b.bdf", 16, 1, True, 32, 255),   # Latin-1 (Hügelton needs the umlaut)
-         ("L", "ter-u16b.bdf", 16, 2, True, 32, 95)]   # values / titles: digits, signs, capitals
+# GUBHU (decision 0004): Spleen, both sizes drawn at their own size. The 8 x 16 cell and its 8 px advance
+# are the ones the layout was built on, so nothing moves; the large face is a real 16 x 32 drawing instead of
+# the small one's pixels at 2x. Drawn in capitals only (gfx.c glyph).
+SIZES = [("S", "spleen-8x16.bdf", 16, 1, True, 32, 255),   # Latin-1 (Hügelton needs the umlaut)
+         ("L", "spleen-16x32.bdf", 32, 1, True, 32, 95)]   # values / titles: digits, signs, capitals
 PAD = 2
 
 
