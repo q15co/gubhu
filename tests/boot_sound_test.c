@@ -143,11 +143,74 @@ static void defaults_check(const char *when)
 
 int main(void)
 {
-    uint32_t i;
+    uint32_t i, erases0, progs0;
     harness_init();
     memset(nor, 0xFF, sizeof nor);               /* 1. a first install: nothing in the flash */
+    memset(proj_slot, 0, sizeof proj_slot);      /* (a cold boot: .noinit has no warm-reset sections) */
+    erases0 = fl_erases, progs0 = fl_progs;
     boot_as_main();
     defaults_check("first power-on");
+    {
+        uint32_t s, i;
+        uint32_t kicks[4] = {0};
+        static const uint8_t AT[6] = {0, 3, 5, 8, 11, 13};
+        check(arrangement_ready() == 15u && arr_valid(&arrangement, arrangement_ready()),
+              "first power-on: A, B, C and D are ready for the default song");
+        check(song.g[G_BPM] == 112 && song.g[G_SWING] == 30, "first power-on: 112 BPM and the genre's swing");
+        check(trk[0].p[P_MUTE] == 1 && trk[1].p[P_MUTE] == 0 && TDRUM->p[P_MUTE] == 0,
+              "first power-on: the intro is piano and percussion, log muted");
+        for (i = 0; i < 16u; i++)
+            check(!dstep_has(&TDRUM->dstep[i], lane_of_note(36)) &&
+                  !dstep_has(&TDRUM->dstep[i], lane_of_note(39)),
+                  "first power-on: the intro has no kick or clap");
+        for (s = 0; s < 4u; s++) {
+            const project_t *p = &proj_slot[s];
+            uint32_t logs = 0, claps = 0, rims = 0, hats = 0, shaker = 0, low_same = 0, notes = 0, key_ok = 1;
+            uint32_t want_kick = s == 1u ? 16u : s == 2u ? 8u : 0u;
+            uint32_t want_clap = s == 1u || s == 2u ? 8u : 0u;
+            check(pt_get(&p->t[0], P_SLEN) == 64 && pt_get(&p->t[1], P_SLEN) == 64 &&
+                  pt_get(&p->t[TRK_DRUM], P_SLEN) == 64, "starter: every scene is four bars of sixteenths");
+            check(pt_get(&p->t[0], P_MUTE) == (s < 2u), "starter: the log waits for the drop");
+            check(pt_get(&p->t[1], P_MUTE) == 0 && pt_get(&p->t[1], P_SGATE) < 64,
+                  "starter: the short-gated piano stays through the break");
+            check(pt_get(&p->t[TRK_DRUM], P_MUTE) == (s == 3u) &&
+                  pt_get(&p->t[TRK_DRUM], P_TFLT) < 0, "starter: the break drops percussion; the kit is low-passed");
+            for (i = 0; i < 64u; i++) {
+                const step_t *l = &p->t[0].step[i];
+                const dstep_t *d = &p->t[TRK_DRUM].dstep[i];
+                uint32_t q = i % 16u, k;
+                int accent = 0;
+                for (k = 0; k < 6u; k++) accent |= q == AT[k];
+                if (l->time == ST_NOTE && l->n) {
+                    logs++;
+                    notes |= 1u << (l->note[0] % 12u);
+                    key_ok &= l->note[0] >= 33u && l->note[0] <= 45u && ((0xAD5u >> (l->note[0] % 12u)) & 1u);
+                }
+                kicks[s] += dstep_has(d, lane_of_note(36));
+                claps += dstep_has(d, lane_of_note(39));
+                rims += dstep_has(d, lane_of_note(37));
+                hats += dstep_has(d, lane_of_note(46));
+                shaker += dstep_has(d, lane_of_note(70));
+                low_same += dstep_has(d, lane_of_note(36)) && l->time == ST_NOTE && l->n != 0;
+                if (accent && q != 0u && q != 8u)
+                    check(l->time == ST_NOTE && l->n == 1u, "starter: log on township accents 4, 6, 12 and 14");
+            }
+            printf("starter: scene %u log: %u notes, pitch-class mask %03x, in key %u, kick/log together %u\n",
+                   s, logs, notes, key_ok, low_same);
+            check(logs == 24u && key_ok && (notes & (notes - 1u)),
+                  "starter: the four-bar log phrase moves through A Dorian");
+            check((p->t[0].step[59].flags & SF_SLIDE) && p->t[0].step[61].time == ST_NOTE,
+                  "starter: the last log note glides into the phrase end");
+            check(kicks[s] == want_kick && claps == want_clap,
+                  "starter: build adds kick and clap; drop halves the kick; break has neither");
+            check(low_same * 2u < logs, "starter: log and kick rarely land together");
+            if (s < 3u) {
+                check(rims == 24u && hats == 16u && shaker == 64u,
+                      "starter: rim 3-3-2, open hat offbeats and continuous shaker");
+            }
+        }
+        check(fl_erases == erases0 && fl_progs == progs0, "first power-on: the starter writes no flash sectors");
+    }
     snap_check("first power-on");
     compare("first power-on");
     boot_as_main();
@@ -199,6 +262,29 @@ int main(void)
             snprintf(b, sizeof b, "a saved project keeps part %u's root, scale and quantiser", (unsigned)k + 1u);
             check(trk[k].p[P_ROOT] == 2 && trk[k].p[P_SCALE] == 2 && trk[k].p[P_QUANT] == 0, b);
         }
+    }
+    {   /* 5. starter sections never replace a saved working project or a user's scene set */
+        static project_t q, keep, now;
+        proj_capture(&q);
+        memset(nor, 0xFF, sizeof nor);
+        memset(proj_slot, 0, sizeof proj_slot);
+        st_save(OBJ_AUTOSAVE, &q, sizeof q);
+        boot_as_main();
+        proj_capture(&now);
+        check(!memcmp(&q, &now, sizeof q), "a cold boot resumes the saved working project byte for byte");
+        check(arrangement_ready() == 15u, "an autosave without scene slots still gets the starter sections");
+
+        keep = proj_slot[2];                       /* a valid project of one's own, not a format fixture */
+        keep.g[G_BPM] = 93;
+        pt_set(&keep.t[1], P_LEVEL, 55);
+        keep.sum = proj_sum(&keep);
+        memset(nor, 0xFF, sizeof nor);
+        memset(proj_slot, 0, sizeof proj_slot);
+        st_save(OBJ_PROJECT0 + 2u, &keep, sizeof keep);
+        boot_as_main();
+        check(!memcmp(&keep, &proj_slot[2], sizeof keep), "a saved scene survives the starter byte for byte");
+        check(!project_used(0) && !project_used(1) && !project_used(3),
+              "one saved scene keeps the starter out of the other slots");
     }
     printf("boot_sound: %d failed\n", fails);
     return fails != 0;
