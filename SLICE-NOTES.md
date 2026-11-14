@@ -65,7 +65,7 @@ Verified by `tests/ui_pages_test.c`: the frame pixel is asserted to be `C_SEL`, 
 ### Sizes and tests on this follow-up
 
 - Selection ring alone: **569868 -> 570220 B (+352 B)**.
-- With the visualiser change: **570220 -> 569044 B (-1176 B)**; net **-824 B** against #27, **+500 B** against `cdce4dc`.
+- With the visualiser change: **570220 -> 569316 B (-904 B)**; net **-552 B** against #27, **+772 B** against `cdce4dc`.
 - Loader **6920 B**, package **610076 B**, `golden.txt` SHA-256 unchanged.
 - Both palettes: **99 PPM pages**, all state/notification assertions, 20000-frame fuzz, isolated song tests.
 - Full host script: `build/host-followups.log`, only the four pre-existing target-budget overruns.
