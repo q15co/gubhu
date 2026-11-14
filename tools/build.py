@@ -102,8 +102,7 @@ def generate():
             [tools / "gen_tables.py", GEN / "felucca_tables.h"],
             [tools / "gen_samples.py", GEN / "felucca_samples.h"],
             [tools / "gen_drumkits.py", GEN / "felucca_drumkits.h"],
-            [tools / "gen_fm6_patches.py", GEN / "felucca_fm6.h"],
-            [tools / "gen_logo.py", GEN / "sloop_logo.h"]]
+            [tools / "gen_fm6_patches.py", GEN / "felucca_fm6.h"]]
     procs = [subprocess.Popen([sys.executable, *map(str, c)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                               text=True) for c in cmds]
     failed = []
@@ -180,7 +179,7 @@ def build_loader():
 def build_app():
     flags = [*CFLAGS, "-Ifirmware/hal", "-Ifirmware/src", "-Ibuild/gen"]
     for flag in ("FELUCCA_FLASH", "FELUCCA_OTA", "FELUCCA_OTA_DRYRUN", "FELUCCA_CDC", "FELUCCA_UART",
-                 "FELUCCA_ICONS", "FELUCCA_SLICE", "FELUCCA_CPU1", "FELUCCA_LOGO_TEXT"):
+                 "FELUCCA_ICONS", "FELUCCA_SLICE", "FELUCCA_CPU1"):
         v = os.environ.get(flag)    # unset: the default in firmware/src/felucca.c
         if v in ("0", "1"):
             flags.append(f"-D{flag}={v}")
@@ -334,15 +333,7 @@ def main():
         gen, ldr = ex.submit(generate), ex.submit(build_loader)
         gen.result()
         ota = ldr.result()
-    try:
-        img, syms, dis, rt = build_app()
-    except SystemExit:
-        # (2.7) the flash is full: the boot logo as text ("S" and "LOOP" in the tracks' colours, splash.c) gives 4.6 KB
-        if "overflow" not in LAST_ERR or os.environ.get("FELUCCA_LOGO_TEXT") == "1":
-            raise
-        print("build: the flash is full: building again with the boot logo as text (FELUCCA_LOGO_TEXT=1, 4.6 KB less)")
-        os.environ["FELUCCA_LOGO_TEXT"] = "1"
-        img, syms, dis, rt = build_app()
+    img, syms, dis, rt = build_app()
     errors, notes = check(img, syms, dis, rt)
     hal_err = mmio_check()
     errors += hal_err
