@@ -46,6 +46,6 @@ UI_SMALL static void gubhu_splash(void)
     cv_text(120 - text_w(&FONT_S, v) / 2, 34, &FONT_S, v, GUBHU_C_GRAY);
     cv_blit(0, 152);
     cv_begin(240, 16, GUBHU_BG);
-    cv_text(120 - text_w(&FONT_S, "BASED ON FELUCCA") / 2, 0, &FONT_S, "BASED ON FELUCCA", GUBHU_C_DIM);
+    cv_text(120 - text_w(&FONT_S, "BASED ON SLOOP") / 2, 0, &FONT_S, "BASED ON SLOOP", GUBHU_C_DIM);
     cv_blit(0, 214);
 }

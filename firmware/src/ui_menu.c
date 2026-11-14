@@ -145,18 +145,19 @@ UI_SMALL static void draw_menu(void)
             cv_text(4, 70, &FONT_S, "GITHUB.COM/Q15CO/GUBHU", C_AMB);   /* (the source of this firmware) */
             cv_text(4, 86, &FONT_S, "GPL-3.0, NO WARRANTY", C_HI);
             cv_rect(4, 104, 232, 1, C_LINE);        /* credits: what the firmware is built on, under the licence */
-            cv_text(4, 112, &FONT_S, "CODE: FELUCCA (KUROSHITA)", C_DIM);
-            cv_text(4, 126, &FONT_S, "FONT: TAMZEN (TAMSYN)", C_DIM);
-            cv_text(4, 140, &FONT_S, "SAMPLES: VERSILIAN (CC0)", C_DIM);
-            cv_text(4, 154, &FONT_S, "+ SONIC PI (CC0)", C_DIM);
-            cv_text(4, 168, &FONT_S, "PHASE: CRISPYZEBRA (GPL)", C_DIM);
-            cv_text(4, 182, &FONT_S, "VOICE: REF. KLATTSCH (MIT)", C_DIM);
+            cv_text(4, 112, &FONT_S, "CODE: SLOOP (ISOD89)", C_DIM);      /* the fork's parent */
+            cv_text(4, 126, &FONT_S, "BASE: FELUCCA (KUROSHITA)", C_DIM);  /* what SLOOP is built on */
+            cv_text(4, 140, &FONT_S, "FONT: TAMZEN (TAMSYN)", C_DIM);
+            cv_text(4, 154, &FONT_S, "SAMPLES: VERSILIAN (CC0)", C_DIM);
+            cv_text(4, 168, &FONT_S, "+ SONIC PI (CC0)", C_DIM);
+            cv_text(4, 182, &FONT_S, "PHASE: CRISPYZEBRA (GPL)", C_DIM);
+            cv_text(4, 196, &FONT_S, "VOICE: REF. KLATTSCH (MIT)", C_DIM);
 #if FELUCCA_CPU1                                    /* (the host tests include this file without cpu1.c) */
             {
                 char sv[12];
                 cpu1_supplies(sv);                  /* SYSVDD, VDC14 as they are now: 1.38V 1.60V (fm1_sys.h) */
-                cv_text(236 - text_w(&FONT_S, sv), 198, &FONT_S, sv, C_GRAY);
-                cv_text(236 - text_w(&FONT_S, sv) - 12 - text_w(&FONT_S, cpu1_label()), 198,
+                cv_text(236 - text_w(&FONT_S, sv), 214, &FONT_S, sv, C_GRAY);
+                cv_text(236 - text_w(&FONT_S, sv) - 12 - text_w(&FONT_S, cpu1_label()), 214,
                         &FONT_S, cpu1_label(), C_AMB);   /* 2 CORES / 1 CORE (cpu1.c) */
             }
 #endif
