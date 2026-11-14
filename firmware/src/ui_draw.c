@@ -5,6 +5,36 @@
 static void draw_menu(void);
 static uint32_t str_hash(uint32_t h, const char *s);
 
+/* ------------------------------------------------------------ the mark --- */
+/* The GUBHU wordmark (docs/DESIGN.md) is a text placeholder and stays lowercase, which the panel
+ * font cannot draw: gfx.c's glyph() folds a-z onto A-Z. The four distinct letters are cut here
+ * from the same Tamzen Bold 8x16 cells the font is generated from. splash.c draws them 3x on the
+ * boot screen, ABOUT 2x. */
+static const uint8_t WORD_G[16] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x3F, 0x66, 0x66, 0x66, 0x3C, 0x60, 0x3E, 0x63, 0x63, 0x3E, 0x00};
+static const uint8_t WORD_U[16] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x3E, 0x00, 0x00, 0x00, 0x00};
+static const uint8_t WORD_B[16] = {0x00, 0x00, 0x60, 0x60, 0x60, 0x7C, 0x66, 0x66, 0x66, 0x66, 0x66, 0x7C, 0x00, 0x00, 0x00, 0x00};
+static const uint8_t WORD_H[16] = {0x00, 0x00, 0x60, 0x60, 0x60, 0x7C, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x00, 0x00, 0x00, 0x00};
+
+/* a wordmark letter: its 8x16 cell at s x s, so the lowercase forms keep their x-height and the
+ * 'g' its descender */
+UI_SMALL static void word_letter(const uint8_t *rows, int32_t x, int32_t y, int32_t s, uint16_t c)
+{
+    uint32_t r, b;
+    for (r = 0; r < 16u; r++)
+        for (b = 0; b < 8u; b++)
+            if (rows[r] & (0x80u >> b))
+                cv_rect(x + (int32_t)b * s, y + (int32_t)r * s, s, s, c);
+}
+
+/* "gubhu" at scale s: 8 * s px per letter, 5 letters */
+UI_SMALL static void gubhu_mark(int32_t x, int32_t y, int32_t s, uint16_t c)
+{
+    static const uint8_t *const MARK[5] = {WORD_G, WORD_U, WORD_B, WORD_H, WORD_U};
+    uint32_t i;
+    for (i = 0; i < 5u; i++)
+        word_letter(MARK[i], x + (int32_t)i * 8 * s, y, s, c);
+}
+
 /* --------------------------------------------------------- drawing --- */
 UI_SMALL static int is_eng_name(const char *s)                 /* one of the ENGINES[]->name strings */
 {

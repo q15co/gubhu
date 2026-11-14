@@ -133,33 +133,34 @@ UI_SMALL static void draw_menu(void)
     for (pass = 0; pass < 2u; pass++) {             /* the canvas holds 124 rows: draw in two bands */
         cv_begin(240, pass ? 95u : 124u, C_BLACK);
         cv_oy = pass ? -124 : 0;
-        if (ui.menu == 2) {
-            cv_text(4, 4, &FONT_L, "SLOOP", C_WHITE);
-            cv_rect(96, 10, 8, 4, TE_COL[0]), cv_rect(96, 16, 12, 4, TE_COL[1]);   /* the sail */
-            cv_rect(96, 22, 16, 4, TE_COL[2]), cv_rect(96, 28, 20, 4, TE_COL[3]);
-            cv_text(4, 36, &FONT_S, "BASED ON FELUCCA", C_AMB);
-            cv_text(4, 54, &FONT_S, FELUCCA_VERSION, C_HI);
+        if (ui.menu == 2) {                         /* ABOUT: this firmware, its source, and what it is built from */
+            const char *v = FELUCCA_VERSION;
+            if (v[0] == 'S' && v[1] == 'L' && v[5] == ' ')
+                v += 6;                             /* "SLOOP 2.8.5" -> the fork's own name and version */
+            gubhu_mark(4, 2, 2, C_HI);              /* the wordmark, 80 x 32 (splash.c draws it 3x on boot) */
+            cv_text(4, 38, &FONT_S, "FM1 FIRMWARE", C_AMB);
+            cv_text(4, 54, &FONT_S, "GUBHU", C_HI);
+            cv_text(52, 54, &FONT_S, v, C_AMB);
             cv_text(236 - text_w(&FONT_S, __DATE__), 54, &FONT_S, __DATE__, C_GRAY);   /* build date */
-            cv_text(cv_text(4, 72, &FONT_S, "LEO KUROSHITA", C_HI) + 8, 72, &FONT_S, "@KUROGEDELIC", C_AMB);
-            cv_text(4, 88, &FONT_S, "H\xDCGELTON INSTRUMENTS", C_HI);   /* Latin-1 U-umlaut */
-            cv_text(4, 104, &FONT_S, "HUGELTON.COM", C_AMB);
-#if FELUCCA_CPU1
+            cv_text(4, 70, &FONT_S, "GITHUB.COM/Q15CO/GUBHU", C_AMB);   /* (the source of this firmware) */
+            cv_text(4, 86, &FONT_S, "GPL-3.0, NO WARRANTY", C_HI);
+            cv_rect(4, 104, 232, 1, C_LINE);        /* credits: what the firmware is built on, under the licence */
+            cv_text(4, 112, &FONT_S, "CODE: SLOOP (ISOD89)", C_DIM);      /* the fork's parent */
+            cv_text(4, 126, &FONT_S, "BASE: FELUCCA (KUROSHITA)", C_DIM);  /* what SLOOP is built on */
+            cv_text(4, 140, &FONT_S, "FONT: TAMZEN (TAMSYN)", C_DIM);
+            cv_text(4, 154, &FONT_S, "SAMPLES: VERSILIAN (CC0)", C_DIM);
+            cv_text(4, 168, &FONT_S, "+ SONIC PI (CC0)", C_DIM);
+            cv_text(4, 182, &FONT_S, "PHASE: CRISPYZEBRA (GPL)", C_DIM);
+            cv_text(4, 196, &FONT_S, "VOICE: REF. KLATTSCH (MIT)", C_DIM);
+#if FELUCCA_CPU1                                    /* (the host tests include this file without cpu1.c) */
             {
                 char sv[12];
-                cpu1_supplies(sv);                  /* (2.7) SYSVDD, VDC14 now: 1.38V 1.60V (fm1_sys.h) */
-                cv_text(236 - text_w(&FONT_S, sv), 104, &FONT_S, sv, C_GRAY);
+                cpu1_supplies(sv);                  /* SYSVDD, VDC14 as they are now: 1.38V 1.60V (fm1_sys.h) */
+                cv_text(236 - text_w(&FONT_S, sv), 214, &FONT_S, sv, C_GRAY);
+                cv_text(236 - text_w(&FONT_S, sv) - 12 - text_w(&FONT_S, cpu1_label()), 214,
+                        &FONT_S, cpu1_label(), C_AMB);   /* 2 CORES / 1 CORE (cpu1.c) */
             }
 #endif
-            cv_text(4, 119, &FONT_S, "GPL-3.0, NO WARRANTY", C_HI);
-#if FELUCCA_CPU1                                    /* (the host tests include this file without cpu1.c) */
-            cv_text(236 - text_w(&FONT_S, cpu1_label()), 119, &FONT_S, cpu1_label(), C_AMB);   /* 2 CORES / 1 CORE (cpu1.c) */
-#endif
-            cv_text(4, 132, &FONT_S, "GITHUB.COM/ISOD89/SLOOP-FM1", C_AMB);   /* (the source of this firmware) */
-            cv_text(4, 146, &FONT_S, "FONT: TAMZEN (TAMSYN)", C_DIM);
-            cv_text(4, 159, &FONT_S, "SAMPLES: VERSILIAN (CC0)", C_DIM);
-            cv_text(4, 172, &FONT_S, "+ SONIC PI (CC0)", C_DIM);
-            cv_text(4, 185, &FONT_S, "PHASE: CRISPYZEBRA (GPL)", C_DIM);
-            cv_text(4, 198, &FONT_S, "VOICE: REF. KLATTSCH (MIT)", C_DIM);
         } else {
             int32_t x = 4;
             for (i = 0; i < MS_COUNT; i++) {        /* the sections as tabs: this one lit */
