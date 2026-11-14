@@ -3,14 +3,14 @@
  * any page closes it; SELECT steps through the twelve styles (the name shows a second); a layer held shows
  * its screen as ever, then the visualiser comes back. The keys, PLAY and REC work as always.
  *   1 OSCILLOSCOPE  2 SPECTRUM  3 SPECTROGRAM  4 LISSAJOUS  5 VU METERS  6 CIRCLE
- *   7 TAPE  8 LCD  9 BOUNCE  10 ORBIT  11 WIRES  12 SLOOP (the logo: the sail's bands are the tracks)
+ *   7 TAPE  8 LCD  9 BOUNCE  10 ORBIT  11 WIRES  12 BEADS (the beadwork strand: a bead a step, four to a track)
  * It reads what the audio already leaves for the UI: the scope buffers (audio.c, the mix at 22 kHz, left and
  * right, as if MASTER were all the way up: the picture does not follow the volume knob, even at 0), the tracks' peaks (fx.c / drums.c, as the TRACKS meters read them), the notes that started
  * (voice.c vis_hit) and the transport clock. Everything is drawn in the main loop, every other frame, in two
  * bands of 120 rows (the canvas holds 124): no cost to the audio. */
 #define VIS_N 12u
 static const char *const VIS_NAME[VIS_N] = {"OSCILLOSCOPE", "SPECTRUM", "SPECTROGRAM", "LISSAJOUS", "VU METERS",
-                                            "CIRCLE", "TAPE", "LCD", "BOUNCE", "ORBIT", "WIRES", "SLOOP"};
+                                            "CIRCLE", "TAPE", "LCD", "BOUNCE", "ORBIT", "WIRES", "BEADS"};
 /* vis_on, vis_shown_last, vis_name_t: ui_draw.c; vis_style: panel.c (kept with the settings) */
 #define VIS_FFT 512u
 #define VIS_SG_W 48u                                /* spectrogram: 48 columns of 5 px, 72 rows of 3 px */
@@ -328,7 +328,7 @@ static void vis_update(void)
             }
         }
         break;
-    case 11:                                        /* SLOOP: the sail's bands and the dial fall slowly */
+    case 11:                                        /* BEADS: the beads fall back at their tracks' rate */
         for (i = 0; i < 5u; i++)
             vs.vu[i] = (int16_t)(vs.lvl[i] > vs.vu[i] - 30 ? vs.lvl[i] : vs.vu[i] - 30);
         break;
@@ -554,47 +554,32 @@ static void vis_wires(void)
         cv_text(10, y0 - 22, &FONT_S, lab, TE_COL[i]);
     }
 }
-/* the logo (tools/gen_logo.py at 0.86, centred on 120, 112), alive: the dial is the master, the sail's four
- * bands the tracks (growing with their level, flashing on a note), the boat rocks on the master's wave */
-static void vis_sloop(void)
+/* GUBHU's mark, alive: the beadwork strand of the boot screen (splash.c's band), one bead per step of
+ * the bar and four to a track's colour. Each bead stands on the strand at its track's level and
+ * flashes when that track sounds; the bar's downbeat bead is the long one, and a caret marks the step
+ * playing. The sail, the dial and the hull were SLOOP's logo, another instrument's face (ADR 0008):
+ * the visualiser is this instrument's, so it carries this instrument's mark. */
+static void vis_beads(void)
 {
-    static const int16_t BAND[4][4] = {{691, 1035, 1659, 1938}, {1118, 1462, 2006, 2285}, {1544, 1888, 2353, 2632},
-                                       {1971, 2315, 2700, 2980}};   /* y0, y1, x right at y0, at y1 (1/16 px) */
-    uint32_t bq = vis_beat_q8(), i;
-    int32_t ang = (isin(bq) * 11) >> 15;            /* +-4 degrees (1024 a turn), a sway every four beats */
-    int32_t sn = isin((uint32_t)ang), cs = icos((uint32_t)ang);
-    int32_t px[4], py[4], x, sc = vs.scale > 1600 ? vs.scale : 1600, end;
-#define ROT(X, Y, I) do { int32_t dx_ = (X) - 120 * 16, dy_ = (Y) - 170 * 16;                       \
-        px[I] = 120 * 16 + ((dx_ * cs - dy_ * sn) >> 15); py[I] = 170 * 16 + ((dx_ * sn + dy_ * cs) >> 15); } while (0)
-    /* the dial: 270 degrees, lit to the master's level */
-    end = vs.vu[4] * 768 / 1000;
-    for (x = 0; x <= 768; x += 6) {
-        uint32_t a = (uint32_t)(384 + x) & 1023u;
-        vis_ellipse(120 + ((icos(a) * 99) >> 15), 112 + ((isin(a) * 99) >> 15), 5, 5, x <= end && vs.vu[4] ? C_WHITE : te_gray(RGB(40, 40, 46)));
-    }
-    /* the mast */
-    ROT(1443, 627, 0); ROT(1571, 627, 1); ROT(1571, 2507, 2); ROT(1443, 2507, 3);
-    vis_poly(px, py, 4, C_WHITE);
-    /* the sail: each band dim, then lit to its track's level */
-    for (i = 0; i < 4u; i++) {
-        int32_t g = 256 * (250 + 750 * vs.vu[i] / 1000) / 1000, xr0 = 1659 + (BAND[i][2] - 1659) * g / 256,
-                xr1 = 1659 + (BAND[i][3] - 1659) * g / 256;
-        uint16_t col = vs.flash[i] ? mix565(TE_COL[i], C_WHITE, vs.flash[i] * 13) : TE_COL[i];
-        ROT(1659, BAND[i][0], 0); ROT(BAND[i][2], BAND[i][0], 1); ROT(BAND[i][3], BAND[i][1], 2); ROT(1659, BAND[i][1], 3);
-        vis_poly(px, py, 4, TE_DIM[i]);
-        ROT(1659, BAND[i][0], 0); ROT(xr0, BAND[i][0], 1); ROT(xr1, BAND[i][1], 2); ROT(1659, BAND[i][1], 3);
-        vis_poly(px, py, 4, col);
-    }
-    /* the hull */
-    ROT(62 * 16, 2635, 0); ROT(178 * 16, 2635, 1); ROT(170 * 16, 2811, 2); ROT(70 * 16, 2811, 3);
-    vis_poly(px, py, 4, C_WHITE);
-#undef ROT
-    /* the sea: the master's wave */
-    for (x = 0; x < 240; x++) {
-        int32_t s = x ? (vis_l[x - 1] + 2 * vis_l[x] + vis_l[x + 1]) / 4 : vis_l[0];   /* (smoothed: a sea, not a hiss) */
-        int32_t y = 182 + s * 5 / sc + ((isin((uint32_t)(x * 9) + bq) * 3) >> 15);
-        cv_rect(x, y, 1, 240 - y, TE_DIM[0]);
-        cv_rect(x, y, 1, 2, TE_COL[0]);
+    static const uint16_t BAND[4] = {GUBHU_TRACK_1, GUBHU_TRACK_2, GUBHU_TRACK_3, GUBHU_TRACK_4};
+    static const uint8_t W[5] = {4, 8, 12, 8, 4};           /* a bead: 12 px wide, 24 tall, 4 px steps */
+    static const uint8_t H[5] = {4, 4, 8, 4, 4};
+    static const uint8_t Y[5] = {0, 4, 8, 16, 20};
+    uint32_t i, k, b;
+    int32_t base = 208, beat = (int32_t)((vis_beat_q8() >> 8) & 15u);
+    cv_rect(0, base, 240, 1, GUBHU_C_LINE);                 /* the thread the beads are strung on */
+    for (i = 0; i < 16u; i++) {
+        int32_t cx = 8 + (int32_t)i * 15, L = (int32_t)(i / 4u);
+        uint32_t n = 1u + (uint32_t)vs.vu[L] * 5u / 1000u;  /* how far up the thread the level reaches */
+        uint16_t lit = vs.flash[L] ? mix565(BAND[L], GUBHU_C_HI, vs.flash[L] * 13) : BAND[L];
+        for (b = 0; b < n; b++) {                           /* one bead a level step, bottom up */
+            int32_t y = base - 26 * (int32_t)(b + 1u);
+            uint16_t c = b ? lit : TE_DIM[L];               /* the bead on the thread is the dim one */
+            for (k = 0; k < 5u; k++)
+                cv_rect(cx - W[k] / 2, y + (int32_t)Y[k], W[k], H[k], c);
+        }
+        if ((int32_t)i == beat)
+            cv_rect(cx - 3, base + 4, 7, 2, C_WHITE);       /* the step playing */
     }
 }
 
@@ -624,7 +609,7 @@ static void vis_draw(void)
         case 8: vis_bounce(); break;
         case 9: vis_orbit(); break;
         case 10: vis_wires(); break;
-        default: vis_sloop(); break;
+        default: vis_beads(); break;
         }
         if (!pass && (vis_name_t || ui.msg_t)) {    /* the style's name a second (or a message) */
             char n[8];

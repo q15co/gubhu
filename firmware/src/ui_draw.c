@@ -277,7 +277,7 @@ UI_SMALL static void graph_steps(const track_t *t, uint16_t c)
         if (st->flags & SF_ACCENT)
             cv_rect(x - 1, y - 2, 3, 1, c);
         if (i == ui.cursor)
-            step_select(x, y, 7, 14);
+            step_select(x, y, 7, 14, on || st->time == ST_TIE);
         if (playing)
             step_play(x, y, 7, 14);
     }
@@ -948,7 +948,7 @@ UI_SMALL static void draw_foot(void)
             if (playing && on)
                 step_trigger(sx, 2, 8, 8);
             if (song.seq_mode && si == ui.cursor)
-                step_select(sx, 2, 8, 8);
+                step_select(sx, 2, 8, 8, on);
             if (playing)
                 step_play(sx, 2, 8, 8);
         }

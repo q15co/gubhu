@@ -49,3 +49,24 @@ Files: `firmware/src/gfx.c`, `firmware/src/ui_draw.c`, `firmware/src/ui_layers.c
 
 - Firmware image **569868 B**, **+1324 B** over `cdce4dc`; loader **6920 B**, package **610076 B** unchanged. Both MONO and GUBHU produced **99 PPM pages** and passed all state/notification assertions plus 20000-frame UI fuzz. Isolated song tests passed. The full host regression reports **185/185 golden renders unchanged**, zero health/voice/routing failures and zero crashes. `tests/golden.txt` SHA-256 is unchanged at `94893254d2db78a4f4fb94163bc6cf53e894e3cff6149374710c76347b4739ca`. The complete host script exits 1 only for the four pre-existing target-budget failures; no audio baselines or hashes were changed.
 - Deliberately no changes to the audio path, palette order, persisted projects, fonts, generated theme tooling, boot splash or ABOUT work already landed. `params.c` was audited: its short labels already use uppercase Tamzen and values use the same fixed-cell face, so it needed no source change. No hardware flashing, push or PR.
+
+## Follow-up: the three states left open in the merged slices
+
+The branch above was merged as #27 with three items unresolved. All three are now settled, on `fix/6-screen-followups`.
+
+**1. The selection ring shared the accent with the playing fill.** `step_select()` drew its frame in `C_WHITE`, which is maize under GUBHU, and `step_pad()` fills a playing step with `C_WHITE` too. On a track 3 step the ring and the fill were the same pixel; on track 1 they were 2.7:1 apart. Selection now has its own token, `pal_sel`: `values` `#F8EFE3` under GUBHU, unchanged white for the legacy palettes and the custom theme's own accent. Where the palette sets `pal_sel_gap` (GUBHU only) a one-pixel Ink gap is drawn inside a *lit* pad's border before the ring, so the ring never sits directly on a track colour: ivory on Ink measures about 15:1, and the gap on track 3's maize about 14:1. Empty pads keep their outline and take no gap. The three call sites (`graph_steps`, the footer bank, the drum lanes) pass the pad's lit state.
+
+Verified by `tests/ui_pages_test.c`: the frame pixel is asserted to be `C_SEL`, and a new check fails if a palette that draws a gap ever has `pal_sel == pal_hi`, which is the regression itself. Both palettes pass, 99 PPM pages each.
+
+**2. Empty pads use `TE_G1`, not the panel token.** This is not a defect and no code changed. `TE_G1` is the `firmware.empty` role (`#24132F`), which is `surface-raised`; `DESIGN.md` / Step sequencer says "muted surfaces for empty steps" and then names the outline as the signal: `surface-raised` alone is not the empty-state signal. The darker `firmware.panel` `#150B22` fills the strips the pads sit on, so filling a pad with it would leave the pad visible only as its outline and lose the surface the design asks for. The outline (`#9C54F5`, 4.97:1 on Ink, ADR 0006) does the work.
+
+**3. Visualiser style 12 was the upstream SLOOP logo.** Replaced with `BEADS`, the fork's beadwork strand, at 16 beads on a thread, one per step and four to a track's colour, strung up by each track's level. Rationale and alternatives in ADR 0008. The style name in `VIS_NAME` and the header comment changed with it; `vis_style` persists by index, so a saved setting still selects the twelfth style.
+
+### Sizes and tests on this follow-up
+
+- Selection ring alone: **569868 -> 570220 B (+352 B)**.
+- With the visualiser change: **570220 -> 569044 B (-1176 B)**; net **-824 B** against #27, **+500 B** against `cdce4dc`.
+- Loader **6920 B**, package **610076 B**, `golden.txt` SHA-256 unchanged.
+- Both palettes: **99 PPM pages**, all state/notification assertions, 20000-frame fuzz, isolated song tests.
+- Full host script: `build/host-followups.log`, only the four pre-existing target-budget overruns.
+- Hardware unverified: the gap and the ring on a real panel at arm's length, and the dim bead's contrast under the theme's surface colours.

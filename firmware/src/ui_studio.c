@@ -459,7 +459,7 @@ UI_SMALL static void drum_screen_draw(void)
                         cv_rect(12 + (int32_t)j * 14, y + ch - 1, 12, 1, C_WHITE);
                     }
                     if (p == drum_cursor && i == drum_lane) {
-                        step_select(12 + (int32_t)j * 14, y, 12, ch);
+                        step_select(12 + (int32_t)j * 14, y, 12, ch, on);
                     }
                 }
             }

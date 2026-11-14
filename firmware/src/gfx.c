@@ -40,6 +40,9 @@ static uint16_t pal_panel;               /* Surface for GUBHU panel strips; the 
 #define C_PANEL pal_panel
 static uint16_t pal_hi = 0xFFFFu;        /* the accent: white unless a theme says (palette_set) */
 #define C_WHITE pal_hi               /* accent only: what is being touched / where we are */
+static uint16_t pal_sel = 0xFFFFu;       /* the selection ring: white unless a palette has an accent it would sit on */
+#define C_SEL pal_sel
+static uint16_t pal_sel_gap;             /* GUBHU: the one-pixel gap that keeps the ring off a lit pad (0: none) */
 /* The screen is five steps of one colour, darkest to brightest, plus white.
  * Palettes are picked in the HOME-hold menu (COLOR). */
 typedef struct {
@@ -183,6 +186,11 @@ static void palette_set(uint32_t i)              /* built-in palette i, or the t
     pal_bg = cu ? theme.bg : gu ? GUBHU_BG : 0u;
     pal_panel = cu ? te_gray(TE_G_DEF[1]) : gu ? GUBHU_PANEL : pal_bg;
     pal_hi = cu ? theme.hi : gu ? GUBHU_ACCENT : 0xFFFFu;
+    /* DESIGN.md / Step sequencer: selected must not be the accent where the accent fills the step too.
+     * GUBHU's playing step is maize, so the ring is `values` (#F8EFE3) with an Ink gap under it; the
+     * legacy palettes keep their white ring exactly as they drew it. */
+    pal_sel = cu ? theme.hi : gu ? GUBHU_C_HI : 0xFFFFu;
+    pal_sel_gap = gu ? pal_bg : 0u;
     /* DESIGN.md / Step sequencer: GUBHU's empty pads have an outline. MONO needs the same
      * shape cue; the legacy colour palettes keep their original rendering. */
     pal_step_outline = gu ? GUBHU_STEP_OUTLINE : !cu && i == PAL_MONO ? pal[1] : 0u;
@@ -271,9 +279,13 @@ UI_SMALL static void step_pad(int32_t x, int32_t y, int32_t w, int32_t h, int on
         step_empty(x, y, w, h);
 }
 
-UI_SMALL static void step_select(int32_t x, int32_t y, int32_t w, int32_t h)
+/* `lit` is the pad's own fill state: a lit pad is drawn in the accent or a track colour, so
+ * the ring needs a gap to read against it. An empty pad keeps its outline, hence no gap. */
+UI_SMALL static void step_select(int32_t x, int32_t y, int32_t w, int32_t h, int lit)
 {
-    cv_frame(x - 1, y - 1, w + 2, h + 2, C_WHITE);
+    if (lit && pal_sel_gap)
+        cv_frame(x, y, w, h, pal_sel_gap);
+    cv_frame(x - 1, y - 1, w + 2, h + 2, C_SEL);
 }
 
 UI_SMALL static void step_play(int32_t x, int32_t y, int32_t w, int32_t h)
