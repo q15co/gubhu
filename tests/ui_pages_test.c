@@ -213,9 +213,11 @@ int main(int argc, char **argv)
         TSEL->step[6].time = ST_NOTE; TSEL->step[6].n = 1; TSEL->step[6].note[0] = 62;
         open_family(FAM_SEQ); ui.force = 1;
         ui.cursor = 4; TSEL->seq_idx = 4; song.playing = 1; ui_draw(); ppm("page-pattern-states"); song.playing = 0;
-        check(pixel(65, 103) == C_WHITE && pixel(69, 111) == C_BLACK && pixel(69, 122) == C_WHITE &&
+        check(pixel(65, 103) == C_SEL && pixel(69, 111) == C_BLACK && pixel(69, 122) == C_WHITE &&
               pixel(94, 104) == TE_COL[song.sel & 3u] && pixel(80, 104) == pal_step_outline && pixel(82, 106) == TE_G1,
               "state pixels: selected frame, playing caret, triggered inset, programmed fill and empty outline");
+        check(!pal_sel_gap || pal_sel != pal_hi,
+              "state pixels: the selection ring is never the accent that fills a playing step");
         memcpy(TSEL->step, keep, sizeof keep);
     }
     {   /* SLICER: the active slice is a fill + inset trigger + caret, also without colour */
@@ -1573,7 +1575,7 @@ int main(int argc, char **argv)
         }
         check(vis_style == 0u, "visualiser: SELECT goes round (12 -> 1)");
         encs[panel.enc[EN_SELECT]] = -1; frames(2);
-        check(vis_style == 11u && (lights_word() >> 17 & 15u) == 11u, "visualiser: SELECT left: SLOOP (12), kept in the settings word");
+        check(vis_style == 11u && (lights_word() >> 17 & 15u) == 11u, "visualiser: SELECT left: BEADS (12), kept in the settings word");
         lights_from_word(lights_word());
         check(vis_style == 11u, "visualiser: the style read back");
         { int16_t bpm = song.g[G_BPM], lv = trk[0].p[P_LEVEL];
