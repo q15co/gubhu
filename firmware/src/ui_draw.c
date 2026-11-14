@@ -79,7 +79,7 @@ UI_SMALL static void draw_head(void)
     if (!ui.force && sig == ui.head_sig)
         return;
     ui.head_sig = sig;
-    cv_begin(240, H_HEAD, C_BLACK);
+    cv_begin(240, H_HEAD, C_PANEL);
     if (ui.msg_t) {
         cv_text(4, 1, &FONT_S, ui.msg, C_HI);
         cv_blit(0, Y_HEAD);
@@ -190,7 +190,7 @@ UI_SMALL static void draw_column(uint32_t c, const char *label, const char *val,
     if (!ui.force && str_eq(key, ui.col[c]))
         return;
     str_cpy(ui.col[c], key, sizeof ui.col[c]);
-    cv_begin(55, Y_SEP_END - Y_LABEL, C_BLACK);         /* x 4..58: the rule at 59 stays */
+    cv_begin(55, Y_SEP_END - Y_LABEL, C_PANEL);         /* x 4..58: the rule at 59 stays */
     if (FELUCCA_ICONS && icon != ICON_NONE && l[0])
         cv_icon(0, 1, icon, TE_COL[c & 3u]);            /* icon rows 1..10 = the label's cap height */
     cv_text(l[0] ? LABEL_X : 0, 0, &FONT_S, l, C_GRAY);
@@ -203,6 +203,8 @@ UI_SMALL static void draw_column(uint32_t c, const char *label, const char *val,
         cv_rect(0, gy, fx, 3, vc == C_DIM ? C_DIM : TE_DIM[c & 3u]);
         cv_rect(fx, gy - 1, 1, 5, vc == C_DIM ? C_HI : vc);
     }
+    if (c == ui.hot_col && ui.hot_t)
+        cv_frame(0, 0, 55, Y_SEP_END - Y_LABEL, C_WHITE);
     cv_blit(c * 60u + 4u, Y_LABEL);
 }
 
@@ -777,10 +779,12 @@ UI_SMALL static void graph_big(void)
             x0 = (240 - text_w(&FONT_L, ui.big_v[c]) - (ui.big_u[c][0] ? text_w(&FONT_S, ui.big_u[c]) + 4 : 0)) / 2;
             y0 = 30;
         }
-        cv_text(x0, y0 + 2, &FONT_S, ui.big_l[c], TE_COL[c & 3u]);
+        cv_label(x0, y0 + 2, ui.big_l[c], TE_COL[c & 3u]);
         x = cv_text(x0, y0 + 20, &FONT_L, ui.big_v[c], ui.big_c[c] == C_DIM ? C_DIM : ui.big_c[c] == C_WHITE ? C_WHITE : C_HI);
         if (ui.big_u[c][0])
             cv_text(x + 4, y0 + 34, &FONT_S, ui.big_u[c], C_GRAY);
+        if (n > 1u && c == ui.hot_col && ui.hot_t)
+            cv_frame(x0 - 2, y0, 110, 56, C_WHITE);
     }
 }
 
@@ -926,7 +930,7 @@ UI_SMALL static void draw_foot(void)
     if (!ui.force && sig == ui.foot_sig)
         return;
     ui.foot_sig = sig;
-    cv_begin(240, H_FOOT, C_BLACK);
+    cv_begin(240, H_FOOT, C_PANEL);
     {
         uint32_t i;
         for (i = 0; i < 16u; i++) {                   /* row 1: the cursor's bank as 16 pads */
@@ -1011,7 +1015,7 @@ UI_SMALL static void draw_columns(void)
         fmt_int(val, (int32_t)cur + 1);
         str_cpy(u, "/", 8);
         fmt_int(u + 1, (int32_t)total);
-        draw_column(0, "No.", val, u, VAL(0u), -1, ICON_NONE);
+        draw_column(0, "NO.", val, u, VAL(0u), -1, ICON_NONE);
         draw_column(1, "ENG", ENGINES[TSEL->eng_req]->name, "", VAL(1u), -1, engine_icon(ENGINES[TSEL->eng_req]->name));
         draw_column(2, "", "", "", C_HI, -1, ICON_AUTO);
         draw_column(3, "FAV", fav_has(fav_key()) ? "ON" : "--", "", VAL(3u), -1, ICON_NONE);   /* (2.7) KNOB 4 */

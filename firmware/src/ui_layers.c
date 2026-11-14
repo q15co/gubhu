@@ -600,7 +600,7 @@ UI_SMALL static void tiles_draw(const tile_t *tl, uint32_t *cache)
         return;
     *cache = sig;
     for (r = 0; r < 4u; r++) {
-        cv_begin(240, 36, C_BLACK);
+        cv_begin(240, 36, C_PANEL);
         for (c = 0; c < 4u; c++) {
             const tile_t *t = &tl[r * 4u + c];
             int32_t x = 2 + (int32_t)c * 60;
@@ -690,7 +690,7 @@ UI_SMALL static void layer_title(const char *name, const char *sub, uint16_t col
     if (!ui.force && sig == *cache)
         return;
     *cache = sig;
-    cv_begin(240, 40, C_BLACK);
+    cv_begin(240, 40, C_PANEL);
     cv_text(4, 2, &FONT_L, name, col);
     cv_text(4 + text_w(&FONT_L, name) + 10, 18, &FONT_S, ui.msg_t ? ui.msg : sub, ui.msg_t ? C_WHITE : TE_G3);
     if (locked) {                                         /* locked open (HOME): any button lets it go */
@@ -700,7 +700,7 @@ UI_SMALL static void layer_title(const char *name, const char *sub, uint16_t col
     } else if (hdr_r[0]) {                                /* (2.7.2) a right-aligned readout (FX: the fade), like a knob's */
         cv_text(236 - text_w(&FONT_S, hdr_r), 4, &FONT_S, hdr_r, TE_G3);
     }
-    cv_rect(0, 38, 240, 1, TE_G1);
+    cv_rect(0, 38, 240, 1, C_LINE);
     cv_blit(0, 0);
 }
 
@@ -1091,7 +1091,7 @@ UI_SMALL static void hold_screen_draw(void)
     if (sig == cache && !ui.force)
         return;
     cache = sig;
-    cv_begin(240, 124, C_BLACK);
+    cv_begin(240, 124, C_PANEL);
     cv_text(120 - text_w(&FONT_L, ui.hold_kind == 1u ? "clear" : "save") / 2, 4, &FONT_L,
             ui.hold_kind == 1u ? "clear" : "save", ui.hold_kind == 1u ? TE_RED : C_WHITE);
     {   /* the ring: 36 px, 7 thick, filling clockwise from the top */
@@ -1104,7 +1104,7 @@ UI_SMALL static void hold_screen_draw(void)
         }
     }
     cv_blit(0, 20);
-    cv_begin(240, 60, C_BLACK);
+    cv_begin(240, 60, C_PANEL);
     if (ui.hold_kind == 1u) {
         str_cpy(b, "track 1", sizeof b);
         b[6] = (char)('1' + ui.hold_trk);

@@ -32,7 +32,7 @@ UI_SMALL static void song_screen_draw(void)
     if (!ui.force && !ui.msg_t && sig == previous) return;
     previous = ui.msg_t ? ~sig : sig;               /* redraw after a message expires */
     /* Draw one small band at a time: never exceed the 124-row canvas. */
-    cv_begin(240, 40, C_BLACK);
+    cv_begin(240, 40, C_PANEL);
     cv_text(4, 4, &FONT_L, "SONG", C_WHITE);
     cv_text(76, 20, &FONT_S, arrangement_enabled ? "song mode" : "loop mode", arrangement_enabled ? SC[3] : TE_G3);
     fmt_int(b, song.g[G_BPM]);
@@ -40,11 +40,11 @@ UI_SMALL static void song_screen_draw(void)
     cv_text(236 - 24, 4, &FONT_S, "bpm", TE_G3);
     cv_text(236 - text_w(&FONT_S, song.playing ? "playing" : "stopped"), 20, &FONT_S,
             song.playing ? "playing" : "stopped", song.playing ? SC[1] : TE_G3);
-    cv_rect(0, 39, 240, 1, TE_G1);
+    cv_rect(0, 39, 240, 1, C_LINE);
     cv_blit(0, 0);
     for (i = 0; i < 5u; i++) {
         uint32_t pos = start + i;
-        cv_begin(240, 26, C_BLACK);
+        cv_begin(240, 26, C_PANEL);
         if (pos < arrangement.count) {
             const arr_entry_t *e = &arrangement.entry[pos];
             int selected = pos == song_cursor, used = project_used(e->scene);
@@ -72,7 +72,7 @@ UI_SMALL static void song_screen_draw(void)
         }
         cv_blit(0, 42 + 26u * i);
     }
-    cv_begin(240, 68, C_BLACK);
+    cv_begin(240, 68, C_PANEL);
     if (ui.msg_t) {
         cv_rect(0, 4, 240, 30, C_WHITE);
         cv_text((240 - text_w(&FONT_S, ui.msg)) / 2, 11, &FONT_S, ui.msg, C_BLACK);
@@ -80,7 +80,10 @@ UI_SMALL static void song_screen_draw(void)
         static const char *const L[4] = {"entry", "section", "bars", "length"};
         for (i = 0; i < 4u; i++) {
             cv_rect((int32_t)i * 60 + 4, 6, 52, 3, SC[i]);
-            cv_text((int32_t)i * 60 + 30 - text_w(&FONT_S, L[i]) / 2, 12, &FONT_S, L[i], TE_G3);
+            if (label_w(L[i]) <= 52)
+                cv_label((int32_t)i * 60 + 30 - label_w(L[i]) / 2, 12, L[i], TE_G3);
+            else
+                cv_text((int32_t)i * 60 + 30 - text_w(&FONT_S, L[i]) / 2, 12, &FONT_S, L[i], TE_G3);
         }
     }
     cv_text(4, 34, &FONT_S, "rec: store   save: chain", TE_G4);

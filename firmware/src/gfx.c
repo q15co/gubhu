@@ -36,6 +36,8 @@ static int32_t cv_oy;            /* y offset for graph drawing */
 #define RGB(r, g, b) ((uint16_t)((((r) >> 3) << 11) | (((g) >> 2) << 5) | ((b) >> 3)))
 static uint16_t pal_bg;                  /* SLOOP 2.7: the background, black unless a theme says (palette_set) */
 #define C_BLACK pal_bg                   /* the background (and dark text on a light tile) */
+static uint16_t pal_panel;               /* Surface for GUBHU panel strips; the application shell stays Ink */
+#define C_PANEL pal_panel
 static uint16_t pal_hi = 0xFFFFu;        /* the accent: white unless a theme says (palette_set) */
 #define C_WHITE pal_hi               /* accent only: what is being touched / where we are */
 /* The screen is five steps of one colour, darkest to brightest, plus white.
@@ -179,6 +181,7 @@ static void palette_set(uint32_t i)              /* built-in palette i, or the t
     for (k = 0; k < 5u; k++)
         pal[k] = cu ? theme.c[k] : PALETTES[i].c[k];
     pal_bg = cu ? theme.bg : gu ? GUBHU_BG : 0u;
+    pal_panel = cu ? te_gray(TE_G_DEF[1]) : gu ? GUBHU_PANEL : pal_bg;
     pal_hi = cu ? theme.hi : gu ? GUBHU_ACCENT : 0xFFFFu;
     /* DESIGN.md / Step sequencer: GUBHU's empty pads have an outline. MONO needs the same
      * shape cue; the legacy colour palettes keep their original rendering. */
@@ -365,6 +368,27 @@ static int32_t text_w(const felucca_font_t *f, const char *s)
     for (; *s; s++)
         w += f->adv[glyph(f, (uint8_t)*s)];
     return w;
+}
+
+/* Tiny section labels: one extra pixel of tracking, Tamzen only. Values keep
+ * cv_text's fixed-cell telemetry; long labels do not use this helper. */
+static int32_t label_w(const char *s)
+{
+    uint32_t n = 0;
+    while (s[n])
+        n++;
+    return text_w(&FONT_S, s) + (n ? (int32_t)n - 1 : 0);
+}
+
+static int32_t cv_label(int32_t x, int32_t y, const char *s, uint16_t c)
+{
+    char b[2] = {0, 0};
+    int32_t first = x;
+    for (; *s; s++) {
+        b[0] = *s;
+        x = cv_text(x, y, &FONT_S, b, c) + 1;
+    }
+    return x > first ? x - 1 : x;
 }
 
 /* one-shot: text in a box, cleared to black, blitted */

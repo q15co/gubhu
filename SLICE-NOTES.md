@@ -18,3 +18,15 @@ Files: `firmware/src/gfx.c`, `firmware/src/ui_draw.c`, `firmware/src/ui_song.c`,
 - Host suite: `build/host-slice1.log` completed every test with UBSan/ASan enabled. ThreadSanitizer was disabled by a compiler wrapper because its runtime cannot disable ASLR in this container. The script's only failures are `sample_render`, `grain_render`, `drums_mix`, and `fm1_alnk0_irq` target costs. An untouched `cdce4dc` build in `build/baseline-src` fails the same four checks with identical costs (593, 2387, 6811, 268); no budgets were rewritten.
 - Hardware unverified: physical legibility, viewing distance and panel timing. The host LCD double checks bounds; it is not a hardware timing measurement.
 - ADR: none for the state geometry; it directly implements DESIGN.md / Step sequencer using the existing `pal_step_outline` mechanism.
+
+## Slice 2 — chrome tokens and track colours
+
+Files: `firmware/src/gfx.c`, `firmware/src/ui.c`, `firmware/src/ui_draw.c`, `firmware/src/ui_layers.c`, `firmware/src/ui_menu.c`, `firmware/src/ui_song.c`, `firmware/src/ui_studio.c`, `firmware/src/ui_vis.c`, `tests/ui_pages_test.c`, `docs/decisions/0006-fm1-screen-primary-purple.md`, `SLICE-NOTES.md`.
+
+- Image: **569648 -> 569576 B (-72 B)**; **568544 -> 569576 B (+1032 B)** from the original baseline. Loader/package remain 6920/610076 B.
+- What was wrong: panel strips used the shell background, several focus states relied on a colour change, and visualiser effects retained hard-coded legacy track colours.
+- What changed: added the semantic `C_PANEL` role (GUBHU Surface, derived custom-theme surface, legacy background), retained Ink for the shell, used existing strips for 1 px maize focus frames, added one-pixel tracking only to short Tamzen section labels, and routed remaining visualiser track colours through the existing `TE_COL`/`TE_MID`/`TE_DIM` mapping. No new fonts, canvas, full-frame fill or DMA pass.
+- Verified: firmware build; standalone `font_test`; both MONO and GUBHU UI runs, 93 pages each, state-pixel assertions and 20000-frame fuzz. `C_PANEL` and legacy/GUBHU track roles are asserted by the palette test. ADR 0006 records why `#9C54F5`, not declared `#6A00FF`, is used on the FM-1 (2.9:1 fails the 3:1 graphics gate; RGB565 result 4.97:1 on Ink).
+- Full host suite: pending rerun after fixing the standalone `gfx.c` dependency found by `font_test`; that test and both UI suites pass after the fix.
+- Hardware unverified: perceived Surface/ink separation, label tracking and focus visibility on the physical panel.
+- ADR: `0006-fm1-screen-primary-purple.md`.

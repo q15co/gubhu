@@ -852,7 +852,7 @@ int main(int argc, char **argv)
                 settings.palette = (uint32_t)k;
                 palette_set(settings.palette);
                 ok &= !strcmp(PALETTES[k].name, OLD_NAMES[k]) && pal[4] == PALETTES[k].c[4] && C_BLACK == 0u &&
-                      C_WHITE == 0xFFFFu && TE_COL[0] == TE_COL_DEF[0] &&
+                      C_PANEL == 0u && C_WHITE == 0xFFFFu && TE_COL[0] == TE_COL_DEF[0] &&
                       pal_step_outline == (k == (int)PAL_MONO ? PALETTES[k].c[1] : 0u);
             }
             ok &= NPALETTES == 6u && PAL_GUBHU == 5u && !strcmp(PALETTES[PAL_GUBHU].name, "GUBHU");
@@ -862,7 +862,7 @@ int main(int argc, char **argv)
                   pal[3] == GUBHU_C_AMB && pal[4] == GUBHU_C_HI && C_BLACK == GUBHU_BG && C_WHITE == GUBHU_ACCENT &&
                   TE_G1 == GUBHU_EMPTY && TE_G2 == GUBHU_PANEL && TE_G3 == GUBHU_C_GRAY && TE_G4 == GUBHU_C_HI &&
                   TE_COL[0] == GUBHU_TRACK_1 && TE_COL[1] == GUBHU_TRACK_2 && TE_COL[2] == GUBHU_TRACK_3 &&
-                  TE_COL[3] == GUBHU_TRACK_4 && pal_step_outline == GUBHU_STEP_OUTLINE;
+                  TE_COL[3] == GUBHU_TRACK_4 && pal_step_outline == GUBHU_STEP_OUTLINE && C_PANEL == GUBHU_PANEL;
             check(ok, "palette compatibility: GREEN..MONO keep 0..4 and black/white/default tracks; GUBHU is 5 with token roles");
             ok = 1;
             memset(&th, 0, sizeof th);
