@@ -27,6 +27,25 @@ Files: `firmware/src/gfx.c`, `firmware/src/ui.c`, `firmware/src/ui_draw.c`, `fir
 - What was wrong: panel strips used the shell background, several focus states relied on a colour change, and visualiser effects retained hard-coded legacy track colours.
 - What changed: added the semantic `C_PANEL` role (GUBHU Surface, derived custom-theme surface, legacy background), retained Ink for the shell, used existing strips for 1 px maize focus frames, added one-pixel tracking only to short Tamzen section labels, and routed remaining visualiser track colours through the existing `TE_COL`/`TE_MID`/`TE_DIM` mapping. No new fonts, canvas, full-frame fill or DMA pass.
 - Verified: firmware build; standalone `font_test`; both MONO and GUBHU UI runs, 93 pages each, state-pixel assertions and 20000-frame fuzz. `C_PANEL` and legacy/GUBHU track roles are asserted by the palette test. ADR 0006 records why `#9C54F5`, not declared `#6A00FF`, is used on the FM-1 (2.9:1 fails the 3:1 graphics gate; RGB565 result 4.97:1 on Ink).
-- Full host suite: pending rerun after fixing the standalone `gfx.c` dependency found by `font_test`; that test and both UI suites pass after the fix.
+- Full host suite: `build/host-slice2-final.log` completed with the same four baseline target-budget failures documented in slice 1; all other checks passed, including 185/185 unchanged audio goldens. The earlier standalone `gfx.c` dependency found by `font_test` was fixed and retested.
 - Hardware unverified: perceived Surface/ink separation, label tracking and focus visibility on the physical panel.
 - ADR: `0006-fm1-screen-primary-purple.md`.
+
+
+## Slice 3 — dialogs and notifications
+
+Files: `firmware/src/gfx.c`, `firmware/src/ui_draw.c`, `firmware/src/ui_layers.c`, `firmware/src/ui_song.c`, `firmware/src/ui_studio.c`, `firmware/src/ui_vis.c`, `tests/ui_pages_test.c`, `SLICE-NOTES.md`.
+
+- Image: **569576 -> 569868 B (+292 B)**; **568544 -> 569868 B (+1324 B)** from the original baseline. Loader/package remain 6920/610076 B.
+- What was wrong: confirmation, record-arm, saved/write-failure and connectivity feedback relied on coloured indicators in addition to its wording.
+- What changed: one shared Tamzen message renderer in `gfx.c` adds a framed non-colour symbol (`?`, `!`, `+`, `R`, `U`, or `i`) without changing message text. Record/arm has an `R` in its open/filled ring, clear/save holds have `!`/`+` in the progress ring, and connected USB has an outlined badge. Layer titles yield to the message so no badge covers wording. The helpers live in `gfx.c` because isolated song tests compile `ui_song.c` without `ui.c`.
+- Verified: firmware build; isolated `song_ui_test` and `song_arm_test`; both MONO and GUBHU runs each produced **99 PPM pages** in `build/evidence-slice3/{mono,gubhu}` and passed 20000-frame UI fuzz. Six deterministic `notice-*` captures cover confirmation, write failure, saved state, record arm, save hold and USB. Assertions cover badge kinds, unchanged wording, USB outline geometry and state pixels.
+- Audio: `tests/golden.txt` remains at the baseline SHA-256; the final host regression reports **185 golden renders, 0 changed, 0 gone**.
+- Full host suite: `build/host-slice3-final.log` completed the full host script. The only failures are the four baseline target costs documented in slice 1 (`sample_render` 593, `grain_render` 2387, `drums_mix` 6811, `fm1_alnk0_irq` 268); all other checks passed. UBSan/ASan ran; ThreadSanitizer was disabled by a compiler wrapper because its runtime cannot disable ASLR in this container. Node-based web tests were skipped because Node is unavailable..
+- Hardware unverified: physical symbol legibility and visibility during real writes, recording and USB connect/disconnect transitions. No write hardware or physical FM-1 was available.
+- ADR: no new decision; the implementation follows DESIGN.md / Notifications directly.
+
+## Final verification and deliberate exclusions
+
+- Firmware image **569868 B**, **+1324 B** over `cdce4dc`; loader **6920 B**, package **610076 B** unchanged. Both MONO and GUBHU produced **99 PPM pages** and passed all state/notification assertions plus 20000-frame UI fuzz. Isolated song tests passed. The full host regression reports **185/185 golden renders unchanged**, zero health/voice/routing failures and zero crashes. `tests/golden.txt` SHA-256 is unchanged at `94893254d2db78a4f4fb94163bc6cf53e894e3cff6149374710c76347b4739ca`. The complete host script exits 1 only for the four pre-existing target-budget failures; no audio baselines or hashes were changed.
+- Deliberately no changes to the audio path, palette order, persisted projects, fonts, generated theme tooling, boot splash or ABOUT work already landed. `params.c` was audited: its short labels already use uppercase Tamzen and values use the same fixed-cell face, so it needed no source change. No hardware flashing, push or PR.

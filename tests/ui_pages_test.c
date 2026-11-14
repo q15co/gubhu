@@ -229,6 +229,24 @@ int main(int argc, char **argv)
     open_family(FAM_GLO); ui.force = 1; frame(); ppm("page-global");
     open_family(FAM_GLO); ui.force = 1; frame(); ppm("page-master");
     open_family(FAM_SCL); ui.force = 1; frame(); ppm("page-scale");
+    {   /* DESIGN.md / Notifications: the same plain wording, with a non-colour badge in MONO and GUBHU. */
+        uint8_t uc = usb.config, us = usb.suspended;
+        open_family(FAM_ENV); ui.force = 1;
+        ui_message("REC AGAIN: REPLACE"); ui_draw(); ppm("notice-confirm");
+        check(message_kind(ui.msg) == '?' && !strcmp(ui.msg, "REC AGAIN: REPLACE") && pixel(4, 1) == C_HI,
+              "notification: confirmation has a ? badge and unchanged wording");
+        ui_message("SAVE ERROR"); ui.force = 1; ui_draw(); ppm("notice-write-error");
+        check(message_kind(ui.msg) == '!' && !strcmp(ui.msg, "SAVE ERROR"), "notification: write failure has a ! badge");
+        ui_message("SAVED SECTION A"); ui.force = 1; ui_draw(); ppm("notice-saved");
+        check(message_kind(ui.msg) == '+' && !strcmp(ui.msg, "SAVED SECTION A"), "notification: saved state has a + badge");
+        ui.msg_t = 0; rec_wait = 1; ui.force = 1; ui_draw(); ppm("notice-arm"); rec_wait = 0;
+        ui.hold_kind = 2; ui.hold_t0 = fm1_ms - 500u; ui.force = 1; ui_draw(); ppm("notice-save-hold");
+        ui.hold_kind = 0; go_home(); ui.force = 1; ui_draw();
+        open_family(FAM_ENV); ui.force = 1;
+        usb.config = 1; usb.suspended = 0; ui.force = 1; ui_draw(); ppm("notice-usb");
+        check(pixel(185, 1) == C_DIM && pixel(216, 1) == C_DIM, "notification: USB connectivity has an outlined badge");
+        usb.config = uc; usb.suspended = us; ui.force = 1; ui_draw();
+    }
     {   /* (2.4) GLO > SYSTEM: KNOB 1 is MIDI OUT (KEYS / SEQ), shown as such; the USB status in the third column */
         uint32_t i, m0 = (uint32_t)song.g[G_MIDI];
         for (i = 0; i < NPAGES; i++) if (!strcmp(PAGES[i].title, "SYSTEM")) break;

@@ -120,7 +120,7 @@ UI_SMALL static void te_dials(int32_t y0, const char *const lab[4], const char *
     cv_begin(240, ui.msg_t ? 240u - (uint32_t)y0 : 40u, C_PANEL);
     if (ui.msg_t) {                                     /* a message: a white bar */
         cv_rect(0, 10, 240, 32, C_WHITE);
-        cv_text((240 - text_w(&FONT_S, ui.msg)) / 2, 18, &FONT_S, ui.msg, C_BLACK);
+        message_text((240 - message_w(ui.msg)) / 2, 18, ui.msg, C_BLACK);
         cv_blit(0, (uint32_t)y0);
         return;
     }
@@ -214,6 +214,7 @@ UI_SMALL static void te_header(const char *title, uint16_t tc, uint32_t *cache, 
         cv_rect(104 + (int32_t)k * 9, 26, 7, 7, playing && beat % 4u == k ? (k ? C_WHITE : TE_RED) : TE_G2);
     if (song.rec) {
         te_disc(224, 12, 8, TE_RED);
+        cv_text(220, 4, &FONT_S, "R", C_BLACK);         /* record: a letter in the disc as well as red */
         cv_text(176, 4, &FONT_S, "rec", TE_RED);
         if (song.g[G_CLOCK] != 0)                       /* the click is on */
             cv_text(168, 22, &FONT_S, "click", TE_G3);
@@ -901,6 +902,7 @@ UI_SMALL static void rec_screen_draw(void)
         } else {
             te_disc(28, 30, 18, blink ? TE_RED : TE_DIM[3]);
             te_disc(28, 30, 7, C_BLACK);
+            cv_text(24, 22, &FONT_S, "R", C_WHITE);     /* armed: R inside the open ring */
             cv_text(60, 6, &FONT_S, L1[m], C_WHITE);
             cv_text(60, 24, &FONT_S, L2[m], TE_G4);
             cv_text(60, 42, &FONT_S, L3[m], TE_G3);

@@ -691,13 +691,18 @@ UI_SMALL static void layer_title(const char *name, const char *sub, uint16_t col
         return;
     *cache = sig;
     cv_begin(240, 40, C_PANEL);
-    cv_text(4, 2, &FONT_L, name, col);
-    cv_text(4 + text_w(&FONT_L, name) + 10, 18, &FONT_S, ui.msg_t ? ui.msg : sub, ui.msg_t ? C_WHITE : TE_G3);
-    if (locked) {                                         /* locked open (HOME): any button lets it go */
+    if (ui.msg_t) {                                       /* the whole title yields: no badge over the wording */
+        message_text(4, 2, ui.msg, C_WHITE);
+        cv_text(4, 20, &FONT_S, sub, TE_G3);
+    } else {
+        cv_text(4, 2, &FONT_L, name, col);
+        cv_text(4 + text_w(&FONT_L, name) + 10, 18, &FONT_S, sub, TE_G3);
+    }
+    if (!ui.msg_t && locked) {                            /* locked open (HOME): any button lets it go */
         int32_t w = (int32_t)text_w(&FONT_S, "LOCK") + 8;
         cv_rect(236 - w, 4, w, 15, C_WHITE);
         cv_text(240 - w, 4, &FONT_S, "LOCK", C_BLACK);
-    } else if (hdr_r[0]) {                                /* (2.7.2) a right-aligned readout (FX: the fade), like a knob's */
+    } else if (!ui.msg_t && hdr_r[0]) {                   /* (2.7.2) a right-aligned readout (FX: the fade), like a knob's */
         cv_text(236 - text_w(&FONT_S, hdr_r), 4, &FONT_S, hdr_r, TE_G3);
     }
     cv_rect(0, 38, 240, 1, C_LINE);
@@ -1103,6 +1108,7 @@ UI_SMALL static void hold_screen_draw(void)
                 cv_pset(120 + ((si * rr) >> 15), 80 + ((co * rr) >> 15), c);
         }
     }
+    cv_text(116, 72, &FONT_S, ui.hold_kind == 1u ? "!" : "+", C_WHITE); /* clear / save inside the progress ring */
     cv_blit(0, 20);
     cv_begin(240, 60, C_PANEL);
     if (ui.hold_kind == 1u) {

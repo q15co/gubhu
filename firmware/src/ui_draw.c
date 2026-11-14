@@ -81,7 +81,7 @@ UI_SMALL static void draw_head(void)
     ui.head_sig = sig;
     cv_begin(240, H_HEAD, C_PANEL);
     if (ui.msg_t) {
-        cv_text(4, 1, &FONT_S, ui.msg, C_HI);
+        message_text(4, 1, ui.msg, C_HI);
         cv_blit(0, Y_HEAD);
         return;
     }
@@ -130,8 +130,10 @@ UI_SMALL static void draw_head(void)
         cv_rect(bx + 17, 6, 2, 5, C_GRAY);
         for (k = 0; k < lvl; k++)
             cv_rect(bx + 2 + k * 5, 6, 3, 5, lvl == 1 && batt_level() <= 1 ? C_WHITE : C_HI);
-        if (usb.config && !usb.suspended)
+        if (usb.config && !usb.suspended) {
+            cv_frame(bx - 32, 1, 32, 16, C_DIM);       /* connected: outlined USB, not a colour-only dot */
             cv_text(bx - 28, 1, &FONT_S, "USB", C_DIM);
+        }
     }
     cv_blit(0, Y_HEAD);
 }

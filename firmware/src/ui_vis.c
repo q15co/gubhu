@@ -630,7 +630,10 @@ static void vis_draw(void)
             char n[8];
             const char *s = ui.msg_t ? ui.msg : VIS_NAME[vis_style % VIS_N];
             cv_rect(0, 0, 240, 20, C_PANEL);
-            cv_text(120 - text_w(&FONT_S, s) / 2, 2, &FONT_S, s, C_WHITE);
+            if (ui.msg_t)
+                message_text((240 - message_w(ui.msg)) / 2, 2, ui.msg, C_WHITE);
+            else
+                cv_text(120 - text_w(&FONT_S, s) / 2, 2, &FONT_S, s, C_WHITE);
             if (!ui.msg_t) {
                 fmt_int(n, (int32_t)(vis_style % VIS_N) + 1);
                 str_cpy(n + str_len(n), "/12", 4);

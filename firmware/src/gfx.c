@@ -391,6 +391,49 @@ static int32_t cv_label(int32_t x, int32_t y, const char *s, uint16_t c)
     return x > first ? x - 1 : x;
 }
 
+/* DESIGN.md / Notifications: preserve the plain wording and add a framed,
+ * non-colour cue. Kept here because ui_song.c also builds without ui.c. */
+static int msg_has(const char *s, const char *needle)
+{
+    uint32_t i, j;
+    for (i = 0; s[i]; i++) {
+        for (j = 0; needle[j] && s[i + j] == needle[j]; j++)
+            ;
+        if (!needle[j])
+            return 1;
+    }
+    return 0;
+}
+
+static char message_kind(const char *s)
+{
+    if (msg_has(s, "ERROR") || msg_has(s, "FAIL") || msg_has(s, "NO FLASH"))
+        return '!';
+    if (msg_has(s, "AGAIN") || msg_has(s, "HOLD"))
+        return '?';
+    if (msg_has(s, "USB") || msg_has(s, "CLOCK") || msg_has(s, "CONNECT"))
+        return 'U';
+    if (msg_has(s, "REC") || msg_has(s, "ARM") || msg_has(s, "READY"))
+        return 'R';
+    if (msg_has(s, "SAVE") || msg_has(s, "LOAD") || msg_has(s, "ERASE") || msg_has(s, "COPY"))
+        return '+';
+    return 'i';
+}
+
+static void message_badge(int32_t x, int32_t y, const char *s, uint16_t c)
+{
+    char b[2] = {message_kind(s), 0};
+    cv_frame(x, y, 12, 16, c);
+    cv_text(x + 3, y, &FONT_S, b, c);
+}
+
+static int32_t message_w(const char *s) { return 16 + text_w(&FONT_S, s); }
+static void message_text(int32_t x, int32_t y, const char *s, uint16_t c)
+{
+    message_badge(x, y, s, c);
+    cv_text(x + 16, y, &FONT_S, s, c);
+}
+
 /* one-shot: text in a box, cleared to black, blitted */
 static void draw_text_box(uint32_t x, uint32_t y, uint32_t w, const felucca_font_t *f, const char *s,
                           uint16_t c, int align)
