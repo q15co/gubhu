@@ -1,4 +1,4 @@
-# 0006: pitched drum lane via parameter locks
+# 0007: pitched drum lane via parameter locks
 
 Date: 2026-11-14. Status: accepted, deferred for v2.
 
