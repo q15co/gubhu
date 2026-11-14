@@ -180,7 +180,9 @@ static void palette_set(uint32_t i)              /* built-in palette i, or the t
         pal[k] = cu ? theme.c[k] : PALETTES[i].c[k];
     pal_bg = cu ? theme.bg : gu ? GUBHU_BG : 0u;
     pal_hi = cu ? theme.hi : gu ? GUBHU_ACCENT : 0xFFFFu;
-    pal_step_outline = gu ? GUBHU_STEP_OUTLINE : 0u;
+    /* DESIGN.md / Step sequencer: GUBHU's empty pads have an outline. MONO needs the same
+     * shape cue; the legacy colour palettes keep their original rendering. */
+    pal_step_outline = gu ? GUBHU_STEP_OUTLINE : !cu && i == PAL_MONO ? pal[1] : 0u;
     for (k = 0; k < 4u; k++)
         te_g[k] = cu ? te_gray(TE_G_DEF[k]) : gu ? GUBHU_GREYS[k] : TE_G_DEF[k];
     for (k = 0; k < 4u; k++) {
@@ -237,6 +239,55 @@ static void cv_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint16_t c)
     for (; y < y1; y++)
         for (i = x; i < x1; i++)
             cv_px[(uint32_t)y * cv_w + (uint32_t)i] = sc;
+}
+
+/* Shared sequencer geometry (DESIGN.md / Step sequencer). These draw inside the
+ * current strip; none of them adds a blit. Empty is a surfaced, outlined pad;
+ * selected is a rectangular frame; playing is a caret below the pad; triggered
+ * is an inset plus. Thus the states survive MONO and a colour-blind rendering. */
+UI_SMALL static void cv_frame(int32_t x, int32_t y, int32_t w, int32_t h, uint16_t c)
+{
+    cv_rect(x, y, w, 1, c);
+    cv_rect(x, y + h - 1, w, 1, c);
+    cv_rect(x, y, 1, h, c);
+    cv_rect(x + w - 1, y, 1, h, c);
+}
+
+UI_SMALL static void step_empty(int32_t x, int32_t y, int32_t w, int32_t h)
+{
+    cv_rect(x, y, w, h, TE_G1);
+    if (pal_step_outline && w > 2 && h > 2)
+        cv_frame(x, y, w, h, pal_step_outline);
+}
+
+UI_SMALL static void step_pad(int32_t x, int32_t y, int32_t w, int32_t h, int on, uint16_t c)
+{
+    if (on)
+        cv_rect(x, y, w, h, c);
+    else
+        step_empty(x, y, w, h);
+}
+
+UI_SMALL static void step_select(int32_t x, int32_t y, int32_t w, int32_t h)
+{
+    cv_frame(x - 1, y - 1, w + 2, h + 2, C_WHITE);
+}
+
+UI_SMALL static void step_play(int32_t x, int32_t y, int32_t w, int32_t h)
+{
+    cv_rect(x, y + h + 2, w, 1, C_WHITE);
+    if (w >= 3) {
+        cv_rect(x + w / 2 - 1, y + h + 3, 3, 1, C_WHITE);
+        cv_pset(x + w / 2, y + h + 4, C_WHITE);
+    }
+}
+
+UI_SMALL static void step_trigger(int32_t x, int32_t y, int32_t w, int32_t h)
+{
+    if (w >= 5 && h >= 3) {
+        cv_rect(x + w / 2 - 1, y + h / 2, 3, 1, C_BLACK);
+        cv_rect(x + w / 2, y + h / 2 - 1, 1, 3, C_BLACK);
+    }
 }
 
 static void cv_line(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint16_t c)

@@ -112,6 +112,7 @@ static void live5(uint32_t op, uint32_t x, uint32_t y, uint32_t z, uint32_t w)
     ed_live(a, 5);
 }
 static const char *outdir;
+static uint32_t render_palette = PAL_MONO;
 static void ppm(const char *name) {
     char path[512]; snprintf(path,sizeof path,"%s/%s.ppm",outdir,name);
     FILE *f=fopen(path,"wb"); assert(f); fprintf(f,"P6\n240 240\n255\n");
@@ -142,12 +143,21 @@ static void key(uint32_t k) { fm1_in.notes |= 1u << k; frame(); fm1_in.notes &= 
 static int fails;
 static void check(int ok, const char *what) { printf("ui: %-74s %s\n", what, ok ? "ok" : "FAIL"); fails += !ok; }
 static const char *sub_line(void) { return layer_sub_shown; }   /* the layer's sub line as last drawn (ui_layers.c) */
+static uint16_t pixel(uint32_t x, uint32_t y) { return swap16(screen[y * 240u + x]); }
 
 #ifndef UI_PAGES_HARNESS_ONLY                       /* (tests/stress_test.c: the harness, its own main) */
 int main(int argc, char **argv)
 {
     uint32_t i;
     outdir = argc > 1 ? argv[1] : "build/host";
+    if (argc > 2) {
+        if (!strcmp(argv[2], "gubhu"))
+            render_palette = PAL_GUBHU;
+        else if (strcmp(argv[2], "mono")) {
+            fprintf(stderr, "usage: %s [OUTDIR [mono|gubhu]]\n", argv[0]);
+            return 2;
+        }
+    }
     {   /* the preset list by kind (ui.c BANK): every factory preset of every engine once, every name found */
         uint32_t e, k, n, hits;
         bank_resolve();
@@ -168,8 +178,9 @@ int main(int argc, char **argv)
     }
     panel = PANEL_DEFAULT;
     layers_init();
-    settings.palette = 4;
-    palette_set(4);
+    settings.palette = render_palette;
+    palette_set(render_palette);
+    printf("ui: rendering %s palette to %s\n", PALETTES[render_palette].name, outdir);
     host_tracks_init();
     for (i = 0; i < NPART; i++) { set_engine_of(&trk[i], TRK_DEF[i][0]); apply_preset_to(&trk[i], TRK_DEF[i][1]); trk[i].engine = trk[i].eng_req; }
     TDRUM->p[P_E0] = DRUM_DEFAULT_KIT;
@@ -194,6 +205,27 @@ int main(int argc, char **argv)
     open_family(FAM_EDIT); ui.force = 1; frame(); ppm("page-edit");
     open_family(FAM_FX); ui.force = 1; frame(); ppm("page-fx");
     open_family(FAM_SEQ); ui.force = 1; frame(); ppm("page-step");
+    {   /* PATTERN: selected + playing + triggered in one frame; programmed and empty pads beside them */
+        step_t keep[8];
+        memcpy(keep, TSEL->step, sizeof keep);
+        memset(TSEL->step, 0, sizeof keep);
+        TSEL->step[4].time = ST_NOTE; TSEL->step[4].n = 1; TSEL->step[4].note[0] = 60;
+        TSEL->step[6].time = ST_NOTE; TSEL->step[6].n = 1; TSEL->step[6].note[0] = 62;
+        open_family(FAM_SEQ); ui.force = 1;
+        ui.cursor = 4; TSEL->seq_idx = 4; song.playing = 1; ui_draw(); ppm("page-pattern-states"); song.playing = 0;
+        check(pixel(65, 103) == C_WHITE && pixel(69, 111) == C_BLACK && pixel(69, 122) == C_WHITE &&
+              pixel(94, 104) == TE_COL[song.sel & 3u] && pixel(80, 104) == pal_step_outline && pixel(82, 106) == TE_G1,
+              "state pixels: selected frame, playing caret, triggered inset, programmed fill and empty outline");
+        memcpy(TSEL->step, keep, sizeof keep);
+    }
+    {   /* SLICER: the active slice is a fill + inset trigger + caret, also without colour */
+        int16_t mode = TSEL->p[P_SLCR];
+        uint32_t idx = sl[song.sel].idx;
+        for (i = 0; i < NPAGES; i++) if (!strcmp(PAGES[i].title, "SLICER")) break;
+        ui.page = (uint8_t)i; ui.home = 0; page_entered();
+        TSEL->p[P_SLCR] = SL_GATE; sl[song.sel].idx = 2; ui.force = 1; ui_draw(); ppm("page-slicer-states");
+        TSEL->p[P_SLCR] = mode; sl[song.sel].idx = idx;
+    }
     open_family(FAM_GLO); ui.force = 1; frame(); ppm("page-global");
     open_family(FAM_GLO); ui.force = 1; frame(); ppm("page-master");
     open_family(FAM_SCL); ui.force = 1; frame(); ppm("page-scale");
@@ -820,7 +852,8 @@ int main(int argc, char **argv)
                 settings.palette = (uint32_t)k;
                 palette_set(settings.palette);
                 ok &= !strcmp(PALETTES[k].name, OLD_NAMES[k]) && pal[4] == PALETTES[k].c[4] && C_BLACK == 0u &&
-                      C_WHITE == 0xFFFFu && TE_COL[0] == TE_COL_DEF[0] && pal_step_outline == 0u;
+                      C_WHITE == 0xFFFFu && TE_COL[0] == TE_COL_DEF[0] &&
+                      pal_step_outline == (k == (int)PAL_MONO ? PALETTES[k].c[1] : 0u);
             }
             ok &= NPALETTES == 6u && PAL_GUBHU == 5u && !strcmp(PALETTES[PAL_GUBHU].name, "GUBHU");
             settings.palette = PAL_GUBHU;

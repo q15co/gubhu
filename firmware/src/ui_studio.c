@@ -260,6 +260,8 @@ UI_SMALL static void studio_tracks_draw(void)
         rows[i] = h;
         cv_begin(240, 36, C_BLACK);
         cv_rect(2, 3, 26, 30, selected ? col : dim);   /* the track tile */
+        if (selected)
+            cv_frame(1, 2, 28, 32, C_WHITE);            /* focus is a frame as well as a brighter tile */
         {
             char n[2] = {(char)('1' + i), 0};
             cv_text(11, 10, &FONT_S, n, selected ? C_BLACK : col);
@@ -289,12 +291,17 @@ UI_SMALL static void studio_tracks_draw(void)
                     for (k = a; k < z; k++) if (trk_step_on(t, k)) on = 2;
                 }
             }
-            cv_rect(34 + (int32_t)j * 10, 21, 8, 9,
-                    !on ? C_BLACK : on == 2u ? (silent ? TE_G3 : selected ? col : dim) : TE_G1);
+            if (on) {
+                int playing = song.playing && p == pos;
+                step_pad(34 + (int32_t)j * 10, 21, 8, 9, on == 2u,
+                         playing && on == 2u ? C_WHITE : silent ? TE_G3 : selected ? col : dim);
+                if (playing && on == 2u && !silent)
+                    step_trigger(34 + (int32_t)j * 10, 21, 8, 9);
+            }
             if (on == 2u && !selected && !silent)
                 cv_rect(34 + (int32_t)j * 10, 21, 8, 2, col);
             if (song.playing && p == pos)
-                cv_rect(34 + (int32_t)j * 10, 31, 8, 2, C_WHITE);
+                step_play(34 + (int32_t)j * 10, 21, 8, 9);
         }
         cv_rect(198, 23, 38, 5, TE_G1);                /* the level */
         if (!silent)
@@ -416,22 +423,33 @@ UI_SMALL static void drum_screen_draw(void)
             for (i = 0; i < DRUM_LANES; i++) {
                 int32_t y = (int32_t)i * lp + 2;
                 cv_rect(2, y, 6, ch, pad_lit[i] ? C_WHITE : i == drum_lane ? TE_DRUM : TE_G2);
+                if (pad_lit[i])
+                    cv_rect(4, y + ch / 2, 2, 1, C_BLACK);   /* triggered lane: an inset dash */
+                if (i == drum_lane)
+                    cv_frame(1, y - 1, 8, ch + 2, C_WHITE);
                 for (j = 0; j < 16u; j++) {
                     uint32_t p = bank * 16u + j;
                     const dstep_t *s = &TDRUM->dstep[p < NSTEP ? p : 0];
+                    int on, playing;
                     uint16_t c;
                     if (p >= len) continue;
-                    c = dstep_has(s, i) ? lvl_col(dstep_lvl(s, i)) : i == drum_lane ? TE_G2 : TE_G1;
-                    if (song.playing && p == TDRUM->seq_idx && c == TE_G1) c = TE_G2;
-                    cv_rect(12 + (int32_t)j * 14, y, 12, ch, c);
-                    if (dstep_has(s, i) && dstep_rat(s, i)) {   /* a ratchet: a notch per extra hit */
+                    on = dstep_has(s, i);
+                    playing = song.playing && p == TDRUM->seq_idx;
+                    c = on ? lvl_col(dstep_lvl(s, i)) : i == drum_lane ? TE_G2 : TE_G1;
+                    step_pad(12 + (int32_t)j * 14, y, 12, ch, on, playing && on ? C_WHITE : c);
+                    if (on && dstep_rat(s, i)) {             /* a ratchet: a notch per extra hit */
                         uint32_t r;
                         for (r = 0; r < dstep_rat(s, i); r++)
                             cv_rect(13 + (int32_t)j * 14 + (int32_t)r * 3, y + 1, 2, 1, C_BLACK);
                     }
+                    if (playing && on)
+                        step_trigger(12 + (int32_t)j * 14, y, 12, ch);
+                    if (playing) {                            /* a dashed vertical playhead through the lanes */
+                        cv_rect(12 + (int32_t)j * 14, y, 12, 1, C_WHITE);
+                        cv_rect(12 + (int32_t)j * 14, y + ch - 1, 12, 1, C_WHITE);
+                    }
                     if (p == drum_cursor && i == drum_lane) {
-                        cv_rect(11 + (int32_t)j * 14, y - 1, 14, 1, C_WHITE);
-                        cv_rect(11 + (int32_t)j * 14, y + ch, 14, 1, C_WHITE);
+                        step_select(12 + (int32_t)j * 14, y, 12, ch);
                     }
                 }
             }
@@ -793,7 +811,7 @@ UI_SMALL static void rec_rows(uint32_t rt, uint32_t take, uint32_t y0, uint32_t 
             uint32_t a = j * len / 16u, z = (j + 1u) * len / 16u, k, on = 0;
             if (z == a) z = a + 1u;
             for (k = a; k < z && k < NSTEP; k++) if (trk_step_on(t, k)) on = 1;
-            cv_rect(106 + (int32_t)j * 8, y + 5, 6, 8, on ? (armed ? TE_COL[i] : TE_DIM[i]) : TE_G1);
+            step_pad(106 + (int32_t)j * 8, y + 5, 6, 8, on, armed ? TE_COL[i] : TE_DIM[i]);
         }
     }
     cv_blit(0, y0);

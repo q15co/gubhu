@@ -52,7 +52,10 @@ UI_SMALL static void song_screen_draw(void)
             int32_t w;
             fmt_int(b, (int32_t)pos + 1);
             cv_text(4, 5, &FONT_S, b, selected ? C_WHITE : TE_G3);
-            cv_rect(30, 3, 22, 20, used ? sc : TE_G1);   /* the section tile */
+            if (used)
+                cv_rect(30, 3, 22, 20, sc);             /* the section tile */
+            else
+                step_empty(30, 3, 22, 20);
             b[0] = (char)('A' + e->scene); b[1] = 0;
             cv_text(37, 5, &FONT_S, b, used ? C_BLACK : sc);
             w = e->bars * 120 / 64 + 4;                 /* its length as a bar */
@@ -62,9 +65,10 @@ UI_SMALL static void song_screen_draw(void)
             cv_text(60 + w + 6, 5, &FONT_S, used ? b : "empty", selected ? C_WHITE : TE_G3);
             if (arrangement_clock.running && arrangement_clock.index == pos) {
                 cv_rect(60, 19, (int32_t)(arrangement_clock.bar + 1u) * w / (e->bars ? e->bars : 1), 2, C_WHITE);
-                cv_rect(226, 9, 9, 9, SC[1]);
+                cv_line(226, 9, 234, 13, C_WHITE);      /* playing: a right arrow, not a green square */
+                cv_line(234, 13, 226, 17, C_WHITE);
             }
-            if (selected) cv_rect(0, 1, 240, 1, TE_G2), cv_rect(0, 24, 240, 1, TE_G2);
+            if (selected) cv_frame(0, 0, 240, 26, C_WHITE);
         }
         cv_blit(0, 42 + 26u * i);
     }

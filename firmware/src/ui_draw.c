@@ -262,18 +262,20 @@ UI_SMALL static void graph_steps(const track_t *t, uint16_t c)
     for (i = 0; i < NSTEP; i++) {                    /* 4 rows of 16 thin bars */
         int32_t x = 6 + (int32_t)(i % 16u) * 14 + (int32_t)(i % 16u) / 4 * 4, y = 6 + (int32_t)(i / 16u) * 24;
         const step_t *st = &t->step[i];
+        int on = step_on(st), playing = song.playing && i == t->seq_idx;
         if (i >= len)
             continue;
-        if (step_on(st))
-            cv_rect(x, y, 1, 14, c);
-        else if (st->time == ST_TIE)
-            cv_rect(x, y + 6, 1, 8, C_DIM);
-        else
-            cv_rect(x, y + 13, 1, 1, C_DIM);
+        step_pad(x, y, 7, 14, on || st->time == ST_TIE, playing ? C_WHITE : on ? c : C_DIM);
+        if (!on && st->time == ST_TIE)
+            cv_rect(x, y, 7, 6, TE_G1);              /* a TIE starts halfway down its pad */
+        if (playing && on)
+            step_trigger(x, y, 7, 14);
         if (st->flags & SF_ACCENT)
             cv_rect(x - 1, y - 2, 3, 1, c);
-        if ((song.playing && i == t->seq_idx) || i == ui.cursor)
-            cv_rect(x - 1, y + 16, 3, 3, C_WHITE);
+        if (i == ui.cursor)
+            step_select(x, y, 7, 14);
+        if (playing)
+            step_play(x, y, 7, 14);
     }
 }
 /* STEP page: the cursor's 16-step bank as a little piano roll */
@@ -352,6 +354,8 @@ UI_SMALL static void graph_roll(const track_t *t, uint16_t c)
                 cv_rect(xa + 1, y + 1, xb - xa - 2, rh - 3, C_BLACK);
             if (f == 4u)                                /* ACC: a white cap */
                 cv_rect(xa, y, xb - xa, 2, C_WHITE);
+            if (song.playing && i == t->seq_idx)        /* triggered: an inset mark, not a brighter colour */
+                step_trigger(xa, y, xb - xa, rh - 1);
             if ((st->flags & SF_SLIDE) && j == 0u)
                 cv_rect(xb, y + rh / 2 - 1, 4, 2, c);
             if (i == ui.cursor && j == ui.note_k % st->n) {   /* the note under edit */
@@ -370,8 +374,8 @@ UI_SMALL static void graph_roll(const track_t *t, uint16_t c)
     }
     if (song.playing && t->seq_idx >= v0 && t->seq_idx < v0 + nv) {   /* the playhead */
         int32_t x = x0 + ((int32_t)t->seq_idx - (int32_t)v0) * w / (int32_t)nv;
-        cv_rect(x, top, 1, bot - top, C_HI);
-        cv_rect(x - 2, top, 5, 2, C_HI);
+        cv_rect(x, top, 1, bot - top, C_WHITE);
+        cv_rect(x - 2, top, 5, 2, C_WHITE);
     }
     if (ui.sheet) {                                     /* OCT+ held: the note's sheet */
         char nu[8];
@@ -391,6 +395,12 @@ UI_SMALL static void graph_scale(const track_t *t, uint16_t c)
         uint16_t col = (mask >> deg) & 1u ? (deg == 0u ? C_WHITE : c) : C_DIM;
         cv_rect(x, BLACK[i] ? 10 : 40, 16, 1, col);
         cv_rect(x + 7, BLACK[i] ? 10 : 40, 1, 40, col);
+        if (deg == 0u)                                 /* the root is a square, not colour alone */
+            cv_frame(x + 4, BLACK[i] ? 7 : 37, 7, 7, C_WHITE);
+        else if (!((mask >> deg) & 1u))                 /* excluded: a hollow foot; included: a filled foot */
+            cv_frame(x + 6, 52, 3, 3, C_DIM);
+        else
+            cv_rect(x + 6, 52, 3, 3, col);
     }
 }
 
@@ -414,18 +424,23 @@ UI_SMALL static void graph_slicer(const track_t *t, uint16_t c)
     uint16_t col = mode == SL_OFF ? C_DIM : c;
     for (i = 0; i < 16u; i++) {
         int32_t x = 4 + (int32_t)i * 14 + (int32_t)(i / 4u) * 2, y;
+        int playing = mode != SL_OFF && i == cur;
         if ((pat >> i) & 1u) {
-            cv_rect(x, 10, 11, 70, col);
+            cv_rect(x, 10, 11, 70, playing ? C_WHITE : col);
+            if (playing)
+                step_trigger(x, 10, 11, 70);
         } else if (mode == SL_STUT) {
             for (y = 10; y < 80; y += 4)
-                cv_rect(x, y, 11, 1, col);
+                cv_rect(x, y, 11, 1, playing ? C_WHITE : col);
         } else {
-            cv_rect(x, 79, 11, 1, C_LINE);
+            step_empty(x, 10, 11, 70);
             if (open)
-                cv_rect(x, 80 - open, 11, open, C_DIM);
+                cv_rect(x + 1, 79 - open, 9, open, playing ? C_WHITE : C_DIM);
+            if (playing)
+                step_trigger(x, 10, 11, 70);
         }
-        if (mode != SL_OFF && i == cur)
-            cv_rect(x, 85, 11, 3, C_WHITE);
+        if (playing)
+            step_play(x, 10, 11, 70);
     }
 }
 UI_SMALL static uint32_t steps_hash(const track_t *t)
@@ -687,6 +702,10 @@ UI_SMALL static void draw_tracks(void)
                     cv_rect(17 - w / 2, r0, w, h, (s->flags & SF_ACCENT) && sel ? C_WHITE : sel ? C_HI : C_GRAY);
                 } else if (s->time == ST_TIE) {
                     cv_rect(16, r0, 3, r1 - r0, C_DIM);
+                } else if (h > 2) {
+                    step_empty(14, r0, 6, h);
+                } else {
+                    cv_rect(16, r0, 3, 1, C_DIM);
                 }
             }
             cv_blit(x0 + 14u, TS_Y);
@@ -910,18 +929,22 @@ UI_SMALL static void draw_foot(void)
     cv_begin(240, H_FOOT, C_BLACK);
     {
         uint32_t i;
-        for (i = 0; i < 16u; i++) {                   /* row 1: the cursor's bank as 16 thin bars */
+        for (i = 0; i < 16u; i++) {                   /* row 1: the cursor's bank as 16 pads */
             uint32_t si = ui.bank * 16u + i;
             int32_t sx = 6 + (int32_t)i * 14 + (int32_t)(i / 4u) * 4;
             const step_t *st = &t->step[si];
+            int on, playing;
             if (si >= (uint32_t)t->p[P_SLEN])
                 continue;
-            if (step_on(st))
-                cv_rect(sx, 2, 2, 9, TE_COL[song.sel & 3u]);
-            else
-                cv_rect(sx, 10, 1, 1, C_DIM);
-            if ((song.playing && si == t->seq_idx) || (song.seq_mode && si == ui.cursor))
-                cv_rect(sx - 1, 13, 3, 3, C_WHITE);
+            on = step_on(st);
+            playing = song.playing && si == t->seq_idx;
+            step_pad(sx, 2, 8, 8, on, playing ? C_WHITE : TE_COL[song.sel & 3u]);
+            if (playing && on)
+                step_trigger(sx, 2, 8, 8);
+            if (song.seq_mode && si == ui.cursor)
+                step_select(sx, 2, 8, 8);
+            if (playing)
+                step_play(sx, 2, 8, 8);
         }
     }
     x = 4;
