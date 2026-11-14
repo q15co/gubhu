@@ -28,9 +28,9 @@ Alternatives considered:
 
 No new asset. The bead is the boot splash's stepped diamond (`splash.c`), drawn
 from the same proportions, so the fork's mark is one geometry in two places
-rather than a second drawing. Measured on this branch: the style change is
-569868 -> 568692 B before the selection-ring change, and the image ends at
-569044 B (baseline at `cdce4dc` 568544 B).
+rather than a second drawing. Measured: the image was 570220 B after the
+selection-ring change alone and 569316 B with this style, so the style is -904 B
+(baseline at `cdce4dc` is 568544 B).
 
 Not verified: appearance on the physical panel, viewing angle and contrast of
 the dim bead under `surface` colours. The host renderer writes the same RGB565
