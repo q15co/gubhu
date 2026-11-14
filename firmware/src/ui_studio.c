@@ -95,6 +95,13 @@ UI_SMALL static void te_text_c(int32_t cx, int32_t y, const char *s, uint16_t c)
 {
     cv_text(cx - text_w(&FONT_S, s) / 2, y, &FONT_S, s, c);
 }
+UI_SMALL static void te_label_c(int32_t cx, int32_t y, const char *s, uint16_t c)
+{
+    if (label_w(s) <= 54)
+        cv_label(cx - label_w(s) / 2, y, s, c);
+    else
+        te_text_c(cx, y, s, c);
+}
 
 /* the dial strip: KNOB 1..4, label + value under each (a dial with no label: an empty column); a
  * message replaces it */
@@ -110,10 +117,10 @@ UI_SMALL static void te_dials(int32_t y0, const char *const lab[4], const char *
     if (!ui.force && sig == *cache)
         return;
     *cache = sig;
-    cv_begin(240, ui.msg_t ? 240u - (uint32_t)y0 : 40u, C_BLACK);
+    cv_begin(240, ui.msg_t ? 240u - (uint32_t)y0 : 40u, C_PANEL);
     if (ui.msg_t) {                                     /* a message: a white bar */
         cv_rect(0, 10, 240, 32, C_WHITE);
-        cv_text((240 - text_w(&FONT_S, ui.msg)) / 2, 18, &FONT_S, ui.msg, C_BLACK);
+        message_text((240 - message_w(ui.msg)) / 2, 18, ui.msg, C_BLACK);
         cv_blit(0, (uint32_t)y0);
         return;
     }
@@ -122,10 +129,12 @@ UI_SMALL static void te_dials(int32_t y0, const char *const lab[4], const char *
         if (!lab[k][0])
             continue;
         te_dial(cx, 12, 11, ratio[k], TE_COL[k], TE_DIM[k]);
-        te_text_c(cx, 24, lab[k], TE_G3);
+        if (ui.hot_t && ui.hot_col == k)
+            cv_frame(cx - 27, 0, 54, 22, C_WHITE);
+        te_label_c(cx, 24, lab[k], TE_G3);
     }
     cv_blit(0, (uint32_t)y0);
-    cv_begin(240, 16, C_BLACK);                         /* the values: white while turned */
+    cv_begin(240, 16, C_PANEL);                         /* the values: white while turned */
     for (k = 0; k < 4u; k++)
         te_text_c(30 + 60 * (int32_t)k, 0, val[k], ui.hot_t && ui.hot_col == k ? C_WHITE : TE_G4);
     cv_blit(0, (uint32_t)y0 + 40u);
@@ -190,7 +199,7 @@ UI_SMALL static void te_header(const char *title, uint16_t tc, uint32_t *cache, 
     if (!ui.force && sig == *cache)
         return;
     *cache = sig;
-    cv_begin(240, 40, C_BLACK);
+    cv_begin(240, 40, C_PANEL);
     fmt_int(b, song.g[G_BPM]);
     cv_text(4, 4, &FONT_L, b, ui.bpm_t ? C_WHITE : TE_G4);
     cv_text(4 + text_w(&FONT_L, b) + 4, 20, &FONT_S, "bpm", TE_G3);
@@ -205,6 +214,7 @@ UI_SMALL static void te_header(const char *title, uint16_t tc, uint32_t *cache, 
         cv_rect(104 + (int32_t)k * 9, 26, 7, 7, playing && beat % 4u == k ? (k ? C_WHITE : TE_RED) : TE_G2);
     if (song.rec) {
         te_disc(224, 12, 8, TE_RED);
+        cv_text(220, 4, &FONT_S, "R", C_BLACK);         /* record: a letter in the disc as well as red */
         cv_text(176, 4, &FONT_S, "rec", TE_RED);
         if (song.g[G_CLOCK] != 0)                       /* the click is on */
             cv_text(168, 22, &FONT_S, "click", TE_G3);
@@ -220,7 +230,7 @@ UI_SMALL static void te_header(const char *title, uint16_t tc, uint32_t *cache, 
         if (song.solo)
             cv_text(236 - text_w(&FONT_S, "solo"), 22, &FONT_S, "solo", C_WHITE);
     }
-    cv_rect(0, 39, 240, 1, TE_G1);
+    cv_rect(0, 39, 240, 1, C_LINE);
     cv_blit(0, 0);
 }
 
@@ -258,8 +268,10 @@ UI_SMALL static void studio_tracks_draw(void)
         for (j = 0; j < len; j++) h = h * 31u + (uint32_t)trk_step_on(t, j);
         if (!ui.force && h == rows[i]) continue;
         rows[i] = h;
-        cv_begin(240, 36, C_BLACK);
+        cv_begin(240, 36, C_PANEL);
         cv_rect(2, 3, 26, 30, selected ? col : dim);   /* the track tile */
+        if (selected)
+            cv_frame(1, 2, 28, 32, C_WHITE);            /* focus is a frame as well as a brighter tile */
         {
             char n[2] = {(char)('1' + i), 0};
             cv_text(11, 10, &FONT_S, n, selected ? C_BLACK : col);
@@ -289,12 +301,17 @@ UI_SMALL static void studio_tracks_draw(void)
                     for (k = a; k < z; k++) if (trk_step_on(t, k)) on = 2;
                 }
             }
-            cv_rect(34 + (int32_t)j * 10, 21, 8, 9,
-                    !on ? C_BLACK : on == 2u ? (silent ? TE_G3 : selected ? col : dim) : TE_G1);
+            if (on) {
+                int playing = song.playing && p == pos;
+                step_pad(34 + (int32_t)j * 10, 21, 8, 9, on == 2u,
+                         playing && on == 2u ? C_WHITE : silent ? TE_G3 : selected ? col : dim);
+                if (playing && on == 2u && !silent)
+                    step_trigger(34 + (int32_t)j * 10, 21, 8, 9);
+            }
             if (on == 2u && !selected && !silent)
                 cv_rect(34 + (int32_t)j * 10, 21, 8, 2, col);
             if (song.playing && p == pos)
-                cv_rect(34 + (int32_t)j * 10, 31, 8, 2, C_WHITE);
+                step_play(34 + (int32_t)j * 10, 21, 8, 9);
         }
         cv_rect(198, 23, 38, 5, TE_G1);                /* the level */
         if (!silent)
@@ -386,15 +403,15 @@ UI_SMALL static void drum_screen_draw(void)
     if (ui.force || sig != title_sig) {
         char b[8];
         title_sig = sig;
-        cv_begin(240, 44, C_BLACK);
+        cv_begin(240, 44, C_PANEL);
         cv_rect(2, 4, 34, 34, TE_DRUM);
         fmt_int(b, (int32_t)kit + 1);
         cv_text(19 - text_w(&FONT_S, b) / 2, 13, &FONT_S, b, C_BLACK);
         cv_text(44, 6, &FONT_L, DRUM_KIT_NAMES[kit], C_WHITE);
-        cv_text(194, 1, &FONT_S, "grid", drum_page == 0 ? C_WHITE : TE_G3);
-        cv_text(194, 15, &FONT_S, "kit", drum_page == 1 ? C_WHITE : TE_G3);
-        cv_text(194, 29, &FONT_S, "sound", drum_page == 2 ? C_WHITE : TE_G3);
-        cv_rect(188, 5 + (int32_t)drum_page * 14, 3, 9, TE_DRUM);
+        cv_label(194, 1, "GRID", drum_page == 0 ? C_WHITE : TE_G3);
+        cv_label(194, 15, "KIT", drum_page == 1 ? C_WHITE : TE_G3);
+        cv_label(194, 29, "SOUND", drum_page == 2 ? C_WHITE : TE_G3);
+        cv_rect(188, 5 + (int32_t)drum_page * 14, 3, 9, C_WHITE);
         cv_blit(0, 40);
     }
     sig = drum_page + drum_lane * 7u + drum_cursor * 101u + song.playing * 71u + len * 3u + ui.sheet * 7919u +
@@ -410,28 +427,39 @@ UI_SMALL static void drum_screen_draw(void)
     }
     if (ui.force || sig != body_sig) {
         body_sig = sig;
-        cv_begin(240, 100, C_BLACK);
+        cv_begin(240, 100, C_PANEL);
         if (!drum_page) {                              /* GRID: the 16 lanes x 16 steps of this bank */
             int32_t lp = ui.sheet ? 5 : 6, ch = lp - 1;   /* (2.8.1) the lanes squeeze up to free the bottom for the sheet bar */
             for (i = 0; i < DRUM_LANES; i++) {
                 int32_t y = (int32_t)i * lp + 2;
                 cv_rect(2, y, 6, ch, pad_lit[i] ? C_WHITE : i == drum_lane ? TE_DRUM : TE_G2);
+                if (pad_lit[i])
+                    cv_rect(4, y + ch / 2, 2, 1, C_BLACK);   /* triggered lane: an inset dash */
+                if (i == drum_lane)
+                    cv_frame(1, y - 1, 8, ch + 2, C_WHITE);
                 for (j = 0; j < 16u; j++) {
                     uint32_t p = bank * 16u + j;
                     const dstep_t *s = &TDRUM->dstep[p < NSTEP ? p : 0];
+                    int on, playing;
                     uint16_t c;
                     if (p >= len) continue;
-                    c = dstep_has(s, i) ? lvl_col(dstep_lvl(s, i)) : i == drum_lane ? TE_G2 : TE_G1;
-                    if (song.playing && p == TDRUM->seq_idx && c == TE_G1) c = TE_G2;
-                    cv_rect(12 + (int32_t)j * 14, y, 12, ch, c);
-                    if (dstep_has(s, i) && dstep_rat(s, i)) {   /* a ratchet: a notch per extra hit */
+                    on = dstep_has(s, i);
+                    playing = song.playing && p == TDRUM->seq_idx;
+                    c = on ? lvl_col(dstep_lvl(s, i)) : i == drum_lane ? TE_G2 : TE_G1;
+                    step_pad(12 + (int32_t)j * 14, y, 12, ch, on, playing && on ? C_WHITE : c);
+                    if (on && dstep_rat(s, i)) {             /* a ratchet: a notch per extra hit */
                         uint32_t r;
                         for (r = 0; r < dstep_rat(s, i); r++)
                             cv_rect(13 + (int32_t)j * 14 + (int32_t)r * 3, y + 1, 2, 1, C_BLACK);
                     }
+                    if (playing && on)
+                        step_trigger(12 + (int32_t)j * 14, y, 12, ch);
+                    if (playing) {                            /* a dashed vertical playhead through the lanes */
+                        cv_rect(12 + (int32_t)j * 14, y, 12, 1, C_WHITE);
+                        cv_rect(12 + (int32_t)j * 14, y + ch - 1, 12, 1, C_WHITE);
+                    }
                     if (p == drum_cursor && i == drum_lane) {
-                        cv_rect(11 + (int32_t)j * 14, y - 1, 14, 1, C_WHITE);
-                        cv_rect(11 + (int32_t)j * 14, y + ch, 14, 1, C_WHITE);
+                        step_select(12 + (int32_t)j * 14, y, 12, ch);
                     }
                 }
             }
@@ -777,7 +805,7 @@ UI_SMALL static void rec_rows(uint32_t rt, uint32_t take, uint32_t y0, uint32_t 
     if (!ui.force && sig == *cache)
         return;
     *cache = sig;
-    cv_begin(240, 76, C_BLACK);
+    cv_begin(240, 76, C_PANEL);
     for (i = 0; i < NTRK; i++) {
         const track_t *t = &trk[i];
         uint32_t len = (uint32_t)clamp(t->p[P_SLEN], 1, 64), armed = i == rt;
@@ -793,7 +821,7 @@ UI_SMALL static void rec_rows(uint32_t rt, uint32_t take, uint32_t y0, uint32_t 
             uint32_t a = j * len / 16u, z = (j + 1u) * len / 16u, k, on = 0;
             if (z == a) z = a + 1u;
             for (k = a; k < z && k < NSTEP; k++) if (trk_step_on(t, k)) on = 1;
-            cv_rect(106 + (int32_t)j * 8, y + 5, 6, 8, on ? (armed ? TE_COL[i] : TE_DIM[i]) : TE_G1);
+            step_pad(106 + (int32_t)j * 8, y + 5, 6, 8, on, armed ? TE_COL[i] : TE_DIM[i]);
         }
     }
     cv_blit(0, y0);
@@ -825,7 +853,7 @@ UI_SMALL static void rec_screen_draw(void)
             char b[24];
             uint32_t n = secs > 99u ? 99u : secs;
             body = sig;
-            cv_begin(240, 106, C_BLACK);
+            cv_begin(240, 106, C_PANEL);
             te_disc(18, 30, 9, blink ? TE_RED : TE_DIM[3]);
             if (n >= 10u)
                 te_digit(36, 4, 32, 56, 7, n / 10u, C_WHITE);
@@ -848,7 +876,7 @@ UI_SMALL static void rec_screen_draw(void)
         rec_rows(rt, take, 148u, &rows);
         if (ui.force || foot != 1u) {
             foot = 1u;
-            cv_begin(240, 16, C_BLACK);
+            cv_begin(240, 16, C_PANEL);
             cv_text(4, 0, &FONT_S, "rec: close", TE_G3);
             cv_text(236 - text_w(&FONT_S, "play: drop"), 0, &FONT_S, "play: drop", TE_G3);
             cv_blit(0, 224);
@@ -865,7 +893,7 @@ UI_SMALL static void rec_screen_draw(void)
         static const char *const L3[3] = {"the tempo follows you", "play: go  rec: cancel", "rec: cancel"};
         uint32_t m = free ? 0u : rec_count ? 2u : 1u;
         body = sig;
-        cv_begin(240, 64, C_BLACK);
+        cv_begin(240, 64, C_PANEL);
         if (count) {                                    /* the count-in: 4, 3, 2, 1 */
             te_digit(96, 4, 30, 54, 6, 4u - (ci_beat > 3u ? 3u : ci_beat), C_WHITE);
             te_disc(60, 31, 12, TE_RED);
@@ -874,6 +902,7 @@ UI_SMALL static void rec_screen_draw(void)
         } else {
             te_disc(28, 30, 18, blink ? TE_RED : TE_DIM[3]);
             te_disc(28, 30, 7, C_BLACK);
+            cv_text(24, 22, &FONT_S, "R", C_WHITE);     /* armed: R inside the open ring */
             cv_text(60, 6, &FONT_S, L1[m], C_WHITE);
             cv_text(60, 24, &FONT_S, L2[m], TE_G4);
             cv_text(60, 42, &FONT_S, L3[m], TE_G3);

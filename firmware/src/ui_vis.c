@@ -373,7 +373,7 @@ static void vis_spectrum(void)
 }
 static uint16_t vis_heat(uint32_t v)               /* 0..255: black, blue, green, yellow, white */
 {
-    static const uint16_t ST[5] = {RGB(0, 0, 0), RGB(40, 124, 255), RGB(30, 204, 112), RGB(255, 198, 24), RGB(255, 255, 255)};
+    const uint16_t ST[5] = {C_BLACK, TE_COL[0], TE_COL[1], TE_COL[2], C_WHITE};
     static const uint8_t AT[5] = {0, 77, 140, 204, 255};
     uint32_t k;
     v = (v + ((v * v) >> 8)) >> 1;                  /* (quiet parts a little darker: about v^1.4) */
@@ -402,7 +402,7 @@ static void vis_spectrogram(void)
 static void vis_lissajous(void)
 {
     uint32_t f, i;
-    static const uint16_t COLS[3] = {RGB(10, 66, 38), RGB(20, 136, 76), RGB(30, 204, 112)};
+    const uint16_t COLS[3] = {TE_DIM[1], TE_MID[1], TE_COL[1]};
     cv_rect(120, 30, 1, 180, C_LINE);
     cv_rect(30, 120, 180, 1, C_LINE);
     for (f = 0; f < 3u; f++) {                      /* the oldest first, dimmest */
@@ -435,14 +435,14 @@ static void vis_ring(void)
 {
     int32_t k = vs.kick, r0 = 52 + k * 18 / 255, rc = r0 * 6 / 10, sc = vs.peak > vs.scale ? vs.peak : vs.scale;
     int32_t px = 0, py = 0, i;
-    vis_ellipse(120, 120, rc, rc, RGB(40 + 140 * k / 255, 14 + 50 * k / 255, 4));
+    vis_ellipse(120, 120, rc, rc, mix565(TE_DIM[3], TE_COL[3], (int32_t)k));
     for (i = 0; i <= 180; i++) {                    /* the wave round the ring, 2 degrees a point */
         uint32_t a = (uint32_t)(i % 180) * 1024u / 180u, j = 20u + (uint32_t)(i % 180) * 2u;
         int32_t s = (vis_l[j - 2u] + vis_l[j - 1u] + vis_l[j] + vis_l[j + 1u] + vis_l[j + 2u]) / 5;
         int32_t rr = r0 + s * 20 / (sc > 1600 ? sc : 1600), x = 120 + ((icos(a) * rr) >> 15), y = 120 + ((isin(a) * rr) >> 15);
         if (i) {
-            cv_line(px, py - 1, x, y - 1, RGB(120, 40, 10));
-            cv_line(px, py + 2, x, y + 2, RGB(120, 40, 10));
+            cv_line(px, py - 1, x, y - 1, TE_DIM[3]);
+            cv_line(px, py + 2, x, y + 2, TE_DIM[3]);
             vis_thick(px, py, x, y, TE_COL[3]);
         }
         px = x, py = y;
@@ -560,7 +560,6 @@ static void vis_sloop(void)
 {
     static const int16_t BAND[4][4] = {{691, 1035, 1659, 1938}, {1118, 1462, 2006, 2285}, {1544, 1888, 2353, 2632},
                                        {1971, 2315, 2700, 2980}};   /* y0, y1, x right at y0, at y1 (1/16 px) */
-    static const uint16_t DIMC[4] = {RGB(9, 27, 56), RGB(7, 45, 25), RGB(56, 44, 5), RGB(56, 22, 6)};
     uint32_t bq = vis_beat_q8(), i;
     int32_t ang = (isin(bq) * 11) >> 15;            /* +-4 degrees (1024 a turn), a sway every four beats */
     int32_t sn = isin((uint32_t)ang), cs = icos((uint32_t)ang);
@@ -582,7 +581,7 @@ static void vis_sloop(void)
                 xr1 = 1659 + (BAND[i][3] - 1659) * g / 256;
         uint16_t col = vs.flash[i] ? mix565(TE_COL[i], C_WHITE, vs.flash[i] * 13) : TE_COL[i];
         ROT(1659, BAND[i][0], 0); ROT(BAND[i][2], BAND[i][0], 1); ROT(BAND[i][3], BAND[i][1], 2); ROT(1659, BAND[i][1], 3);
-        vis_poly(px, py, 4, DIMC[i]);
+        vis_poly(px, py, 4, TE_DIM[i]);
         ROT(1659, BAND[i][0], 0); ROT(xr0, BAND[i][0], 1); ROT(xr1, BAND[i][1], 2); ROT(1659, BAND[i][1], 3);
         vis_poly(px, py, 4, col);
     }
@@ -594,7 +593,7 @@ static void vis_sloop(void)
     for (x = 0; x < 240; x++) {
         int32_t s = x ? (vis_l[x - 1] + 2 * vis_l[x] + vis_l[x + 1]) / 4 : vis_l[0];   /* (smoothed: a sea, not a hiss) */
         int32_t y = 182 + s * 5 / sc + ((isin((uint32_t)(x * 9) + bq) * 3) >> 15);
-        cv_rect(x, y, 1, 240 - y, RGB(12, 34, 76));
+        cv_rect(x, y, 1, 240 - y, TE_DIM[0]);
         cv_rect(x, y, 1, 2, TE_COL[0]);
     }
 }
@@ -630,8 +629,11 @@ static void vis_draw(void)
         if (!pass && (vis_name_t || ui.msg_t)) {    /* the style's name a second (or a message) */
             char n[8];
             const char *s = ui.msg_t ? ui.msg : VIS_NAME[vis_style % VIS_N];
-            cv_rect(0, 0, 240, 20, C_BLACK);
-            cv_text(120 - text_w(&FONT_S, s) / 2, 2, &FONT_S, s, C_WHITE);
+            cv_rect(0, 0, 240, 20, C_PANEL);
+            if (ui.msg_t)
+                message_text((240 - message_w(ui.msg)) / 2, 2, ui.msg, C_WHITE);
+            else
+                cv_text(120 - text_w(&FONT_S, s) / 2, 2, &FONT_S, s, C_WHITE);
             if (!ui.msg_t) {
                 fmt_int(n, (int32_t)(vis_style % VIS_N) + 1);
                 str_cpy(n + str_len(n), "/12", 4);

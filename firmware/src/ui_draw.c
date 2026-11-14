@@ -79,9 +79,9 @@ UI_SMALL static void draw_head(void)
     if (!ui.force && sig == ui.head_sig)
         return;
     ui.head_sig = sig;
-    cv_begin(240, H_HEAD, C_BLACK);
+    cv_begin(240, H_HEAD, C_PANEL);
     if (ui.msg_t) {
-        cv_text(4, 1, &FONT_S, ui.msg, C_HI);
+        message_text(4, 1, ui.msg, C_HI);
         cv_blit(0, Y_HEAD);
         return;
     }
@@ -130,8 +130,10 @@ UI_SMALL static void draw_head(void)
         cv_rect(bx + 17, 6, 2, 5, C_GRAY);
         for (k = 0; k < lvl; k++)
             cv_rect(bx + 2 + k * 5, 6, 3, 5, lvl == 1 && batt_level() <= 1 ? C_WHITE : C_HI);
-        if (usb.config && !usb.suspended)
+        if (usb.config && !usb.suspended) {
+            cv_frame(bx - 32, 1, 32, 16, C_DIM);       /* connected: outlined USB, not a colour-only dot */
             cv_text(bx - 28, 1, &FONT_S, "USB", C_DIM);
+        }
     }
     cv_blit(0, Y_HEAD);
 }
@@ -190,7 +192,7 @@ UI_SMALL static void draw_column(uint32_t c, const char *label, const char *val,
     if (!ui.force && str_eq(key, ui.col[c]))
         return;
     str_cpy(ui.col[c], key, sizeof ui.col[c]);
-    cv_begin(55, Y_SEP_END - Y_LABEL, C_BLACK);         /* x 4..58: the rule at 59 stays */
+    cv_begin(55, Y_SEP_END - Y_LABEL, C_PANEL);         /* x 4..58: the rule at 59 stays */
     if (FELUCCA_ICONS && icon != ICON_NONE && l[0])
         cv_icon(0, 1, icon, TE_COL[c & 3u]);            /* icon rows 1..10 = the label's cap height */
     cv_text(l[0] ? LABEL_X : 0, 0, &FONT_S, l, C_GRAY);
@@ -203,6 +205,8 @@ UI_SMALL static void draw_column(uint32_t c, const char *label, const char *val,
         cv_rect(0, gy, fx, 3, vc == C_DIM ? C_DIM : TE_DIM[c & 3u]);
         cv_rect(fx, gy - 1, 1, 5, vc == C_DIM ? C_HI : vc);
     }
+    if (c == ui.hot_col && ui.hot_t)
+        cv_frame(0, 0, 55, Y_SEP_END - Y_LABEL, C_WHITE);
     cv_blit(c * 60u + 4u, Y_LABEL);
 }
 
@@ -262,18 +266,20 @@ UI_SMALL static void graph_steps(const track_t *t, uint16_t c)
     for (i = 0; i < NSTEP; i++) {                    /* 4 rows of 16 thin bars */
         int32_t x = 6 + (int32_t)(i % 16u) * 14 + (int32_t)(i % 16u) / 4 * 4, y = 6 + (int32_t)(i / 16u) * 24;
         const step_t *st = &t->step[i];
+        int on = step_on(st), playing = song.playing && i == t->seq_idx;
         if (i >= len)
             continue;
-        if (step_on(st))
-            cv_rect(x, y, 1, 14, c);
-        else if (st->time == ST_TIE)
-            cv_rect(x, y + 6, 1, 8, C_DIM);
-        else
-            cv_rect(x, y + 13, 1, 1, C_DIM);
+        step_pad(x, y, 7, 14, on || st->time == ST_TIE, playing ? C_WHITE : on ? c : C_DIM);
+        if (!on && st->time == ST_TIE)
+            cv_rect(x, y, 7, 6, TE_G1);              /* a TIE starts halfway down its pad */
+        if (playing && on)
+            step_trigger(x, y, 7, 14);
         if (st->flags & SF_ACCENT)
             cv_rect(x - 1, y - 2, 3, 1, c);
-        if ((song.playing && i == t->seq_idx) || i == ui.cursor)
-            cv_rect(x - 1, y + 16, 3, 3, C_WHITE);
+        if (i == ui.cursor)
+            step_select(x, y, 7, 14);
+        if (playing)
+            step_play(x, y, 7, 14);
     }
 }
 /* STEP page: the cursor's 16-step bank as a little piano roll */
@@ -352,6 +358,8 @@ UI_SMALL static void graph_roll(const track_t *t, uint16_t c)
                 cv_rect(xa + 1, y + 1, xb - xa - 2, rh - 3, C_BLACK);
             if (f == 4u)                                /* ACC: a white cap */
                 cv_rect(xa, y, xb - xa, 2, C_WHITE);
+            if (song.playing && i == t->seq_idx)        /* triggered: an inset mark, not a brighter colour */
+                step_trigger(xa, y, xb - xa, rh - 1);
             if ((st->flags & SF_SLIDE) && j == 0u)
                 cv_rect(xb, y + rh / 2 - 1, 4, 2, c);
             if (i == ui.cursor && j == ui.note_k % st->n) {   /* the note under edit */
@@ -370,8 +378,8 @@ UI_SMALL static void graph_roll(const track_t *t, uint16_t c)
     }
     if (song.playing && t->seq_idx >= v0 && t->seq_idx < v0 + nv) {   /* the playhead */
         int32_t x = x0 + ((int32_t)t->seq_idx - (int32_t)v0) * w / (int32_t)nv;
-        cv_rect(x, top, 1, bot - top, C_HI);
-        cv_rect(x - 2, top, 5, 2, C_HI);
+        cv_rect(x, top, 1, bot - top, C_WHITE);
+        cv_rect(x - 2, top, 5, 2, C_WHITE);
     }
     if (ui.sheet) {                                     /* OCT+ held: the note's sheet */
         char nu[8];
@@ -391,6 +399,12 @@ UI_SMALL static void graph_scale(const track_t *t, uint16_t c)
         uint16_t col = (mask >> deg) & 1u ? (deg == 0u ? C_WHITE : c) : C_DIM;
         cv_rect(x, BLACK[i] ? 10 : 40, 16, 1, col);
         cv_rect(x + 7, BLACK[i] ? 10 : 40, 1, 40, col);
+        if (deg == 0u)                                 /* the root is a square, not colour alone */
+            cv_frame(x + 4, BLACK[i] ? 7 : 37, 7, 7, C_WHITE);
+        else if (!((mask >> deg) & 1u))                 /* excluded: a hollow foot; included: a filled foot */
+            cv_frame(x + 6, 52, 3, 3, C_DIM);
+        else
+            cv_rect(x + 6, 52, 3, 3, col);
     }
 }
 
@@ -414,18 +428,23 @@ UI_SMALL static void graph_slicer(const track_t *t, uint16_t c)
     uint16_t col = mode == SL_OFF ? C_DIM : c;
     for (i = 0; i < 16u; i++) {
         int32_t x = 4 + (int32_t)i * 14 + (int32_t)(i / 4u) * 2, y;
+        int playing = mode != SL_OFF && i == cur;
         if ((pat >> i) & 1u) {
-            cv_rect(x, 10, 11, 70, col);
+            cv_rect(x, 10, 11, 70, playing ? C_WHITE : col);
+            if (playing)
+                step_trigger(x, 10, 11, 70);
         } else if (mode == SL_STUT) {
             for (y = 10; y < 80; y += 4)
-                cv_rect(x, y, 11, 1, col);
+                cv_rect(x, y, 11, 1, playing ? C_WHITE : col);
         } else {
-            cv_rect(x, 79, 11, 1, C_LINE);
+            step_empty(x, 10, 11, 70);
             if (open)
-                cv_rect(x, 80 - open, 11, open, C_DIM);
+                cv_rect(x + 1, 79 - open, 9, open, playing ? C_WHITE : C_DIM);
+            if (playing)
+                step_trigger(x, 10, 11, 70);
         }
-        if (mode != SL_OFF && i == cur)
-            cv_rect(x, 85, 11, 3, C_WHITE);
+        if (playing)
+            step_play(x, 10, 11, 70);
     }
 }
 UI_SMALL static uint32_t steps_hash(const track_t *t)
@@ -687,6 +706,10 @@ UI_SMALL static void draw_tracks(void)
                     cv_rect(17 - w / 2, r0, w, h, (s->flags & SF_ACCENT) && sel ? C_WHITE : sel ? C_HI : C_GRAY);
                 } else if (s->time == ST_TIE) {
                     cv_rect(16, r0, 3, r1 - r0, C_DIM);
+                } else if (h > 2) {
+                    step_empty(14, r0, 6, h);
+                } else {
+                    cv_rect(16, r0, 3, 1, C_DIM);
                 }
             }
             cv_blit(x0 + 14u, TS_Y);
@@ -758,10 +781,12 @@ UI_SMALL static void graph_big(void)
             x0 = (240 - text_w(&FONT_L, ui.big_v[c]) - (ui.big_u[c][0] ? text_w(&FONT_S, ui.big_u[c]) + 4 : 0)) / 2;
             y0 = 30;
         }
-        cv_text(x0, y0 + 2, &FONT_S, ui.big_l[c], TE_COL[c & 3u]);
+        cv_label(x0, y0 + 2, ui.big_l[c], TE_COL[c & 3u]);
         x = cv_text(x0, y0 + 20, &FONT_L, ui.big_v[c], ui.big_c[c] == C_DIM ? C_DIM : ui.big_c[c] == C_WHITE ? C_WHITE : C_HI);
         if (ui.big_u[c][0])
             cv_text(x + 4, y0 + 34, &FONT_S, ui.big_u[c], C_GRAY);
+        if (n > 1u && c == ui.hot_col && ui.hot_t)
+            cv_frame(x0 - 2, y0, 110, 56, C_WHITE);
     }
 }
 
@@ -907,21 +932,25 @@ UI_SMALL static void draw_foot(void)
     if (!ui.force && sig == ui.foot_sig)
         return;
     ui.foot_sig = sig;
-    cv_begin(240, H_FOOT, C_BLACK);
+    cv_begin(240, H_FOOT, C_PANEL);
     {
         uint32_t i;
-        for (i = 0; i < 16u; i++) {                   /* row 1: the cursor's bank as 16 thin bars */
+        for (i = 0; i < 16u; i++) {                   /* row 1: the cursor's bank as 16 pads */
             uint32_t si = ui.bank * 16u + i;
             int32_t sx = 6 + (int32_t)i * 14 + (int32_t)(i / 4u) * 4;
             const step_t *st = &t->step[si];
+            int on, playing;
             if (si >= (uint32_t)t->p[P_SLEN])
                 continue;
-            if (step_on(st))
-                cv_rect(sx, 2, 2, 9, TE_COL[song.sel & 3u]);
-            else
-                cv_rect(sx, 10, 1, 1, C_DIM);
-            if ((song.playing && si == t->seq_idx) || (song.seq_mode && si == ui.cursor))
-                cv_rect(sx - 1, 13, 3, 3, C_WHITE);
+            on = step_on(st);
+            playing = song.playing && si == t->seq_idx;
+            step_pad(sx, 2, 8, 8, on, playing ? C_WHITE : TE_COL[song.sel & 3u]);
+            if (playing && on)
+                step_trigger(sx, 2, 8, 8);
+            if (song.seq_mode && si == ui.cursor)
+                step_select(sx, 2, 8, 8);
+            if (playing)
+                step_play(sx, 2, 8, 8);
         }
     }
     x = 4;
@@ -988,7 +1017,7 @@ UI_SMALL static void draw_columns(void)
         fmt_int(val, (int32_t)cur + 1);
         str_cpy(u, "/", 8);
         fmt_int(u + 1, (int32_t)total);
-        draw_column(0, "No.", val, u, VAL(0u), -1, ICON_NONE);
+        draw_column(0, "NO.", val, u, VAL(0u), -1, ICON_NONE);
         draw_column(1, "ENG", ENGINES[TSEL->eng_req]->name, "", VAL(1u), -1, engine_icon(ENGINES[TSEL->eng_req]->name));
         draw_column(2, "", "", "", C_HI, -1, ICON_AUTO);
         draw_column(3, "FAV", fav_has(fav_key()) ? "ON" : "--", "", VAL(3u), -1, ICON_NONE);   /* (2.7) KNOB 4 */

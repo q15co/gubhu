@@ -478,11 +478,12 @@ UI_SMALL static void sheet_bar(int32_t y, const char *const *lab, const char *co
     uint32_t prev = (sel + 5u) % 6u, next = (sel + 1u) % 6u, i;
     int32_t x = 6, lw = text_w(&FONT_S, lab[sel]);
     int32_t vw = val[sel] && val[sel][0] ? text_w(&FONT_S, val[sel]) + 6 : 0;
-    cv_rect(0, y, 240, 16, C_BLACK);                   /* the strip */
+    cv_rect(0, y, 240, 16, C_PANEL);                   /* the strip: Surface, with the shell left Ink */
     cv_rect(0, y, 240, 1, C_LINE);
     cv_text(x, y + 2, &FONT_S, lab[prev], C_DIM);      /* the row before (faint) */
     x += text_w(&FONT_S, lab[prev]) + 10;
     cv_rect(x - 3, y + 1, lw + vw + 6, 14, acc);       /* the row under edit, lit */
+    cv_frame(x - 3, y + 1, lw + vw + 6, 14, C_WHITE);  /* focus: a maize frame as well as colour */
     cv_text(x, y + 2, &FONT_S, lab[sel], C_WHITE);
     if (vw)
         cv_text(x + lw + 6, y + 2, &FONT_S, val[sel], C_WHITE);
